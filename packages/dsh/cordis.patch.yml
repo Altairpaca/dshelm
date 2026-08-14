@@ -1,0 +1,3 @@
+- insert:
+    - id: deephelm
+      name: '@deephelm/dsh'
