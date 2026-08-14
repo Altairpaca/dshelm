@@ -1,5 +1,5 @@
 {
-  "name": "@deephelm/core",
+  "name": "@deephelm/dsh",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -7,6 +7,9 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "dependencies": {
+    "@deephelm/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
