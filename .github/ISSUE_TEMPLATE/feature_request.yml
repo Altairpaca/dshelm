@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose a policy, routing, orchestration, UI, or compatibility capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What agent/harness problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful behavior or policy primitive.
+    validations:
+      required: true
+  - type: textarea
+    id: dsh-boundary
+    attributes:
+      label: DSH integration boundary
+      description: Which DeepSeek Harness capability should DeepHelm configure or compose rather than reimplement?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing DSH plugins or harness patterns that already solve part of the problem.

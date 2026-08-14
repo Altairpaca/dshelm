@@ -1,0 +1,35 @@
+name: Bug report
+description: Report incorrect or unexpected DeepHelm behavior
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve DeepHelm. Please include enough information to reproduce the behavior.
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: e.g. 0.0.x
+  - type: input
+    id: deephelm-version
+    attributes:
+      label: DeepHelm version / commit
+      placeholder: e.g. main@abcdef
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest configuration or sequence of steps that reproduces the issue.
+  - type: textarea
+    id: resolution
+    attributes:
+      label: Resolution trace / logs
+      description: If available, paste the DeepHelm resolution trace or relevant logs. Remove credentials and secrets.
