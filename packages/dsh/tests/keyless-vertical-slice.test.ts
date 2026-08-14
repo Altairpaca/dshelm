@@ -2,7 +2,10 @@ import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { type PolicyDocument, type RuntimeCapabilities } from '@deephelm/core'
 import {
+  createDshSubagentStarter,
+  snapshotDshLlmRuntime,
   runPlannerWorkersReviewer,
+  type DshSubagentsRuntimeLike,
   type DshSubagentStartOptions,
 } from '../src/index.ts'
 
@@ -49,6 +52,144 @@ const runtime: RuntimeCapabilities = {
 }
 
 describe('keyless planner-workers-reviewer vertical slice', () => {
+  it('maps resolved options into the public ctx.subagents.start request', async () => {
+    const calls: Array<{
+      readonly provider: string
+      readonly request: { readonly agentOptions?: { readonly provider?: string; readonly model?: string } }
+    }> = []
+    const controller = new AbortController()
+    const start = createDshSubagentStarter(
+      {
+        start: async (provider, request) => {
+          calls.push({ provider, request })
+          return {
+            result: Promise.resolve({
+              output: [{ type: 'text', text: 'subagent-sentinel' }],
+              stopReason: 'completed' as const,
+            }),
+            dispose: async () => {},
+          }
+        },
+      },
+      'spawn',
+      { id: 'parent-session' },
+      controller.signal,
+    )
+
+    const result = await start({
+      role: 'planner',
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    })
+
+    expect(result.output).toBe('subagent-sentinel')
+    expect(calls[0]?.provider).toBe('spawn')
+    expect(calls[0]?.request.agentOptions).toEqual({
+      provider: 'deepseek',
+      model: 'deepseek-v4-pro',
+    })
+  })
+
+  it('invokes the pinned DSH SubagentRuntime service and disposes its run', async () => {
+    const dshRoot = new URL(
+      '../../deephelm-community/deepseek-harness/',
+      pathToFileURL(`${process.cwd()}/`).href,
+    )
+    const { Context } = await import(
+      new URL('vendor/cordis/lib/index.js', dshRoot).href
+    )
+    const { SubagentRuntime } = await import(
+      new URL('packages/subagent/subagent/lib/index.js', dshRoot).href
+    )
+    const context = new Context()
+    const runtimeFiber = await context.plugin(SubagentRuntime)
+    const calls: Array<{ readonly provider: string; readonly model?: string }> = []
+    let disposed = false
+    try {
+      const subagents = context.reflect.get('subagents') as DshSubagentsRuntimeLike & {
+        registerProvider: (provider: unknown) => () => void
+      }
+      expect(subagents).toBeDefined()
+      subagents.registerProvider({
+        name: 'deephelm-test',
+        capabilities: { outputSchema: false, depthLimit: false, toolFilter: false, persona: false },
+        inheritsParentContext: false,
+        start: async (request: {
+          readonly agentOptions?: { readonly provider?: string; readonly model?: string }
+        }) => {
+          calls.push({
+            provider: request.agentOptions?.provider ?? 'missing',
+            model: request.agentOptions?.model,
+          })
+          return {
+            id: 'child-session',
+            localAgent: undefined,
+            result: Promise.resolve({
+              output: [{ type: 'text', text: 'real-subagent-sentinel' }],
+              stopReason: 'completed',
+            }),
+            dispose: async () => {
+              disposed = true
+            },
+          }
+        },
+      })
+      const start = createDshSubagentStarter(
+        subagents,
+        'deephelm-test',
+        { id: 'parent-session', session: { id: 'parent-session' } },
+        new AbortController().signal,
+      )
+      const result = await runPlannerWorkersReviewer({
+        policy,
+        runtime,
+        categories: {
+          planner: 'plan',
+          workers: ['execute', 'execute'],
+          reviewer: 'review',
+        },
+        start,
+      })
+      expect(result.outputs).toEqual([
+        'real-subagent-sentinel',
+        'real-subagent-sentinel',
+        'real-subagent-sentinel',
+        'real-subagent-sentinel',
+      ])
+      expect(calls).toEqual([
+        { provider: 'deepseek', model: 'deepseek-v4-pro' },
+        { provider: 'deepseek', model: 'deepseek-v4-flash' },
+        { provider: 'deepseek', model: 'deepseek-v4-flash' },
+        { provider: 'deepseek', model: 'deepseek-v4-pro' },
+      ])
+      expect(disposed).toBe(true)
+    } finally {
+      await runtimeFiber.dispose()
+    }
+  })
+
+  it('snapshots the public DSH LlmRuntime provider and model catalog', async () => {
+    const capabilities = await snapshotDshLlmRuntime({
+      listProviders: () => [{ id: 'deepseek', name: 'DeepSeek' }],
+      listModels: async (provider) => [
+        { provider, id: 'deepseek-v4-pro', name: 'V4 Pro' },
+        { provider, id: 'deepseek-v4-flash', name: 'V4 Flash' },
+      ],
+    })
+
+    expect(capabilities).toEqual({
+      providers: {
+        deepseek: {
+          enabled: true,
+          models: {
+            'deepseek-v4-pro': { available: true },
+            'deepseek-v4-flash': { available: true },
+          },
+        },
+      },
+    })
+  })
+
   it('pins resolved model options through the real adapter seam', async () => {
     const events: string[] = []
     const calls: DshSubagentStartOptions[] = []

@@ -48,8 +48,11 @@ const html = `<!doctype html>
     <main id="mount"></main>
     <script type="module">
       const snapshot = ${JSON.stringify(snapshot)};
-      const { renderControlPlane } = await import('/client.js');
-      renderControlPlane(document.querySelector('#mount'), snapshot);
+      const { apply } = await import('/client.js');
+      apply({
+        deephelmPolicy: { snapshot: () => snapshot },
+        effect: (cleanup) => { window.addEventListener('beforeunload', cleanup, { once: true }); },
+      });
     </script>
   </body>
 </html>`
