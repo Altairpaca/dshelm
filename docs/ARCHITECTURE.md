@@ -40,6 +40,40 @@ DSH Adapter / Cordis Service
     └──► compatible DSH plugins
 ```
 
+## Implemented v0.1 boundary
+
+The bootstrap implementation keeps this boundary concrete:
+
+- `packages/core` contains serializable contracts, JSONC layer loading,
+  deterministic resolution, runtime capability validation, tool/skill/
+  verification policy, and trace provenance. It imports no DSH package.
+- `packages/dsh` contains the DSH inventory mapper, a thin adapter over
+  `ctx.subagents.start`, the ordered planner/worker/reviewer runner, the
+  Cordis bundle patch, and the native client module.
+- DSH's `LlmRuntime.listProviders()` and `listModels(provider)` are snapshotted
+  before resolution. `SubagentRuntime.start(provider, request)` receives the
+  resolved `agentOptions.provider` and `agentOptions.model`; returned runs are
+  always disposed.
+- The client calls `apply(ctx)` with a host-provided `deephelmPolicy.snapshot`
+  service. The browser is never the policy source of truth.
+
+The reference API evidence is pinned to
+`47f943859bef60e4160492346772ded9b24f765a`. The implementation does not patch
+DSH core or recreate DSH sessions, teams, workflows, or provider transports.
+
+## Configuration precedence
+
+Policy layers are JSON or JSONC and merge from lowest to highest precedence:
+
+```text
+defaults -> user -> project -> request -> runtime capability validation
+```
+
+Malformed JSONC and unknown top-level keys produce machine-readable
+`ConfigResolutionError` diagnostics. Credentials are not accepted as policy
+values. Static declarations are not enough to select a model: the live DSH
+inventory must report the provider and model as available.
+
 The first implementation should target public DSH capability seams directly. A harness-neutral core is useful only where the abstraction survives contact with a real DSH implementation.
 
 ## Core domain model

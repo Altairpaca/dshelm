@@ -22,15 +22,25 @@ Contributions should generally follow these rules:
 
 ## Development workflow
 
-Until the implementation toolchain is committed, the repository intentionally does not prescribe a Node/Bun/package-manager setup.
+The bootstrap toolchain is Node `>=22.19`, pnpm `11.7.0`, strict TypeScript,
+and ESM. Work in an isolated worktree; do not develop in the main worktree.
 
-For now:
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm run qa:web -- --profile deephelm-v01 --url http://127.0.0.1:19876
+```
 
-1. fork or branch from `main`;
-2. keep each change narrowly scoped;
-3. include tests when executable code is introduced;
+For changes:
+
+1. keep each change narrowly scoped and preserve the core/DSH boundary;
+2. write a failing behavior test before changing resolver or adapter behavior;
+3. verify DSH APIs against the pinned reference checkout, never by memory;
 4. update architecture/docs when a public design decision changes;
-5. open a pull request describing the behavior change and the DSH capability it relies on.
+5. record real-surface evidence for install, execution, or browser behavior;
+6. use a focused conventional commit after the increment is green.
 
 ## Commit and PR style
 

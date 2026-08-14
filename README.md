@@ -28,6 +28,35 @@ The goal is a single place to define and inspect:
 
 The first milestone is deliberately DSH-first. We want to prove the policy model against real DeepSeek Harness capabilities before generalizing it into a broader harness abstraction.
 
+### Verified v0.1 vertical slice
+
+The current bootstrap branch contains a runnable, keyless vertical slice:
+
+- `@deephelm/core` resolves category -> agent -> model profile -> runtime
+  candidate deterministically and emits JSON-safe provenance;
+- JSONC defaults, user, project, and request layers merge in that order with
+  fail-loud parse and unknown-key diagnostics;
+- `@deephelm/dsh` maps the pinned DSH LLM catalog and `ctx.subagents.start`
+  seam, then runs planner -> two workers -> reviewer with heterogeneous model
+  assignments;
+- the native client module renders a Roles x Models matrix and Resolution
+  Inspector from host-provided state;
+- a fresh local DSH profile can install the bundle and show it in
+  `--dump-config`.
+
+Validated against DSH commit
+`47f943859bef60e4160492346772ded9b24f765a`. A credentialed provider E2E is
+not claimed; keyless tests use a real pinned Cordis/SubagentRuntime
+composition.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm run qa:web -- --profile deephelm-v01 --url http://127.0.0.1:19876
+```
+
 ## Why DeepHelm?
 
 A mature multi-agent setup quickly needs answers to questions such as:
