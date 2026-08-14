@@ -34,4 +34,18 @@ Thumbs.db
 
 # local runtime state
 .deephelm/local/
-.omo
+.omo/
+.ulw/
+.sisyphus/
+.dsh/
+.agent-teams/
+.taskswarm/
+.sessions/
+.storages/
+.artifacts/
+.playwright-mcp/
+
+# local worktrees and agent scratch
+.worktrees/
+worktrees/
+.agents/worktrees/
