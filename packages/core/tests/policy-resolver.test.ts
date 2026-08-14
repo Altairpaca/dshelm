@@ -22,7 +22,14 @@ const policy: PolicyDocument = {
     },
   },
   agents: {
-    planner: { id: 'planner', role: 'planner', profile: 'reasoning-high' },
+    planner: {
+      id: 'planner',
+      role: 'planner',
+      profile: 'reasoning-high',
+      skills: ['planning'],
+      tools: { allow: ['read'], deny: ['shell'] },
+      verification: { required: true, maxIterations: 2 },
+    },
     worker: { id: 'worker', role: 'worker', profile: 'execution-fast' },
     reviewer: { id: 'reviewer', role: 'reviewer', profile: 'reasoning-high' },
   },
@@ -55,6 +62,9 @@ describe('resolvePolicy', () => {
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
       reasoning: 'high',
+      skills: ['planning'],
+      tools: { allow: ['read'], deny: ['shell'] },
+      verification: { required: true, maxIterations: 2 },
     })
     expect(resolved.trace).toEqual(
       expect.arrayContaining([

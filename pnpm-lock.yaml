@@ -24,7 +24,11 @@ importers:
         specifier: ^4.1.8
         version: 4.1.10(@types/node@22.20.1)(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(tsx@4.23.12))
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
 
   packages/dsh:
     dependencies:
@@ -381,6 +385,9 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  jsonc-parser@3.3.1:
+    resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
 
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
@@ -865,6 +872,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  jsonc-parser@3.3.1: {}
 
   lightningcss-android-arm64@1.33.0:
     optional: true
