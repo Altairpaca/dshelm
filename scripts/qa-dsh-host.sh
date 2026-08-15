@@ -49,17 +49,7 @@ echo "== client manifest present =="
 node -e "const m = require('./node_modules/@dshelm/dsh/package.json'); if (!m.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-runtime')) process.exit(1); console.log('dsh.client.inject:', m.dsh.client.inject.join(', '))"
 
 echo "== client bundle registers under __ModuleLoader__ with the package id =="
-node -e "
-  const fs = require('fs');
-  const p = './node_modules/@dshelm/dsh/lib/client.js';
-  if (!fs.existsSync(p)) { console.error('FAIL: lib/client.js missing'); process.exit(1) }
-  const bundle = fs.readFileSync(p, 'utf8');
-  if (!/__ModuleLoader__\.load\(\{\s*id:\s*\"@dshelm\/dsh\"/.test(bundle)) {
-    console.error('FAIL: client bundle does not register __ModuleLoader__ with id @dshelm/dsh');
-    process.exit(1);
-  }
-  console.log('client bundle OK (__ModuleLoader__ id @dshelm/dsh)');
-"
+node "$ROOT/scripts/verify-client-bundle.js" ./node_modules/@dshelm/dsh/lib/client.js
 
 echo "== plugin tree load (fail loud; web app is TTY-only, so a live boot is
 expected to run until the timeout) =="
