@@ -14,6 +14,7 @@ import { DSHelmPolicyService } from './service.ts'
 import { registerDSHelmProvider } from './provider.ts'
 import { dshelmControlPlaneProjection } from './projection.ts'
 import { loadProjectPolicyLayer, installDSHelmSettings, type DSHelmUserSettings } from './config-files.ts'
+import { z } from 'zod'
 
 export const name = 'dshelm'
 
@@ -30,11 +31,18 @@ export interface Config {
   cwd?: string
 }
 
-export const Config = {
-  defaults: undefined as PolicyLayerValue | undefined,
-  user: undefined as PolicyLayerValue | undefined,
-  cwd: undefined as string | undefined,
-}
+// Cordis 4 validates plugin config through the Standard Schema seam
+// (runtime.Config['~standard'].validate) — the plain-defaults object form is
+// rejected at load with "Cannot read properties of undefined (reading
+// 'validate')". Zod 4 schemas implement the seam; the cast is variance-only.
+export const Config = z.object({
+  defaults: z.unknown().optional(),
+  user: z.unknown().optional(),
+  cwd: z.string().optional(),
+})
+  // The loader passes undefined config for patch entries without a config
+  // key; defaulting keeps the validated config an object.
+  .default({}) as unknown as z.ZodType<Config>
 
 /** Install the DSHelm host service + official seams into a live context. */
 export async function apply(ctx: Context, config: Config): Promise<void> {
