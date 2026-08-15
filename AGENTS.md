@@ -39,3 +39,13 @@ that DSH or an ecosystem plugin already provides.
   evidence that is not a deliberate maintainer artifact.
 - Before claiming completion, run diagnostics, focused tests, build/install
   checks, and the matching real user surface.
+
+## Git stage publishing
+
+- Work on the requested feature branch; never modify or push `main` unless
+  explicitly requested.
+- A completed stage means its scoped changes are validated, committed
+  atomically, and immediately pushed to that branch's upstream.
+- After each stage push, verify the remote branch SHA equals local `HEAD`.
+- Keep the worktree clean between stages; do not mix unrelated changes into a
+  stage commit.
