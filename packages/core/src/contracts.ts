@@ -229,6 +229,47 @@ export interface ResolvedAgentPolicy {
 }
 
 // ---------------------------------------------------------------------------
+// Execution backend contract (v0.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * One role execution request for a backend. Core stays DSH-free: the
+ * backend adapters (DSH native, AgentTeams, workflow plugins) live outside
+ * core and implement this contract.
+ */
+export interface ExecutionBackendRequest {
+  /** Role label (planner, worker, reviewer, ...). */
+  readonly role: string
+  /** The prompt delivered to the role agent. */
+  readonly prompt: string
+  /** The DSHelm-resolved policy for this role. */
+  readonly resolved: ResolvedAgentPolicy
+  /** Optional parent session identity for provenance/recording. */
+  readonly sessionId?: string
+}
+
+/** One role execution result. */
+export interface ExecutionBackendResult {
+  /** Final assistant text (the role's deliverable). */
+  readonly output: string
+  /** Backend label for the trace (e.g. 'native', 'agent-teams'). */
+  readonly backend: string
+  /** Backend-provided detail (member id, run id, ...) when available. */
+  readonly detail?: string
+}
+
+/**
+ * Thin execution backend: run one DSHelm-resolved role to completion.
+ * Backends are bounded (single turn set, no infinite loops); durable
+ * multi-role orchestration belongs to the caller (e.g. the vertical slice).
+ */
+export interface ExecutionBackend {
+  /** Stable backend name recorded in traces. */
+  readonly name: string
+  /** Run one role. Must fail loud on unsupported capabilities. */
+  run(request: ExecutionBackendRequest): Promise<ExecutionBackendResult>
+}
+// ---------------------------------------------------------------------------
 // Errors
 // ---------------------------------------------------------------------------
 

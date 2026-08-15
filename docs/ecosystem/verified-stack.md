@@ -13,7 +13,7 @@
 | Vertical slice (planner→workers→reviewer) | VERIFIED | rc.6 | @dshelm/dsh | vertical-slice.test.ts | scripted adapter; bounded revision proven |
 | Host→client projection transport | VERIFIED | rc.6 | @dshelm/dsh + dsh-session-projection | host-composition projection fold test | browser rendering pending client build |
 | DSH Web client runtime (package availability) | VERIFIED | rc.6 | @deepseek-ai/dsh-client-runtime 0.1.0-rc.6 | npm install + export check (/tmp/dshelm-client-check) | runtime is browser-only (window required) |
-| DSH Web client slot integration | EXPERIMENTAL | rc.6 | dsh-client-runtime + ui-slots + ui-conversation | build pending (tsdown client bundle) | round-3 blocker resolved: rc.6 line published without dsh-compact |
+| DSH Web client bundle (body-portal panel, projection-fed) | EXPERIMENTAL | rc.6 | dsh-client-runtime + react | tsdown build emits lib/client.js with __ModuleLoader__.load({id: @dshelm/dsh}); qa:dsh-host checks bundle shape | live browser rendering pending a real Web shell session |
 | AgentTeams (durable teams) | PARTIAL | rc.6 | @nanmicoder/dsh-agent-teams 0.1.5 | upstream README/source audit; integration pending | per-member effective model needs request/header re-verification; no upstream test suite |
 | Sisyphus presets (lanes) | EXPERIMENTAL | rc.6 | dsh-sisyphus-presets | source/README audit | SUL-1.0 (reference only; detect/support, never copy) |
 | Oh-My-DSH capability library | PARTIAL | rc.6 | oh-my-dsh (unlicensed) | GAP-LEDGER + plugin dir audit | no license → reference only |

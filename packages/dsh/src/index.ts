@@ -94,6 +94,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   ctx.sessionProjections.register(dshelmControlPlaneProjection)
 }
 
+export * from './backends.ts'
 export * from './capabilities.ts'
 export * from './config-files.ts'
 export * from './model-selection.ts'

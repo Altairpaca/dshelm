@@ -98,11 +98,14 @@ What is **proven** (hermetic tests + typecheck + build + real boot):
 
 What is **blocked / deferred** (recorded, not claimed):
 
-- Real DSH Web slot + `useProjection` client integration: the published
-  client runtime (`@deepseek-ai/dsh-client-runtime@0.0.1-rc.1`) depends on
-  the unpublished `@deepseek-ai/dsh-compact`; no installable client stack
-  exists for the rc.6 train. `qa:web-renderer` is the honest renderer
-  smoke; `qa:dsh-host` verifies host-side composition and loader load.
+- DSH Web client: round-3 blocker RESOLVED —
+  `@deepseek-ai/dsh-client-runtime@0.1.0-rc.6` is published and has no
+  `dsh-compact` dependency (the 0.0.1-rc.1 line was the stale latest tag).
+  A real client bundle now builds (tsdown, `__ModuleLoader__` closure,
+  projection-fed control-plane panel); live browser rendering still needs a
+  real Web shell session (`qa:dsh-web` reserved for that). `qa:web-renderer`
+  remains the standalone renderer smoke; `qa:dsh-host` verifies the packed
+  host lane + client bundle shape.
 - Credentialed E2E: no DeepSeek credential in this environment (external
   blocker; keyless acceptance does not depend on it).
 - npm `@dshelm` scope publish: requires registry credentials (checked as a
@@ -193,8 +196,9 @@ Example:
   revision) — keyless proof against a real agent loop
 - [x] Hermetic CI (core-unit, core-property, typecheck, build, dsh-contract,
   pack-install) + pack/install + fresh DSH profile composition (`qa:dsh-host`)
-- [ ] Real DSH Web slot rendering (blocked: published client runtime depends
-  on unpublished `@deepseek-ai/dsh-compact`; renderer smoke is `qa:web-renderer`)
+- [~] Real DSH Web slot rendering: client bundle built (projection-fed panel,
+  `__ModuleLoader__` registration); live browser verification pending a real
+  Web shell session
 
 ### v0.2 — Verified Distribution
 
