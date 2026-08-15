@@ -2,7 +2,7 @@
 
 <!-- Describe the change concisely. -->
 
-## Why this belongs in DeepHelm
+## Why this belongs in DSHelm
 
 <!-- Explain the policy/control-plane responsibility and the DSH capability it composes. -->
 

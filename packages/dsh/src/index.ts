@@ -1,223 +1,93 @@
-import {
-  resolvePolicy,
-  type PolicyDocument,
-  type ReasoningLevel,
-  type RuntimeCapabilities,
-} from '@deephelm/core'
+/**
+ * @dshelm/dsh — the DSHelm DSH adapter.
+ *
+ * Plugin entry: provides the `dshelm.policy` host service (real Cordis
+ * service from this package's own bundle), registers the `dshelm`
+ * subagent provider, installs the control-plane session projection, and
+ * wires project/user configuration layers with the tested precedence
+ * defaults → user → project → request → runtime validation.
+ */
+import type { Context } from '@deepseek-ai/cordis'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { PolicyLayerValue, PolicyLayers } from '@dshelm/core'
+import { DSHelmPolicyService } from './service.ts'
+import { registerDSHelmProvider } from './provider.ts'
+import { dshelmControlPlaneProjection } from './projection.ts'
+import { loadProjectPolicyLayer, installDSHelmSettings, type DSHelmUserSettings } from './config-files.ts'
 
-export type DshRole = 'planner' | 'worker' | 'reviewer'
+export const name = 'dshelm'
 
-export interface DshSubagentStartOptions {
-  readonly role: DshRole
-  readonly provider: string
-  readonly model: string
-  readonly reasoning?: ReasoningLevel
+/** Plugin config: shipped defaults + optional static user layer. */
+export interface Config {
+  /** Shipped default policy document (lowest precedence layer). */
+  defaults?: PolicyLayerValue
+  /** Static user-level overrides (optional; the settings provider overrides these). */
+  user?: PolicyLayerValue
+  /** Cwd for project-layer discovery; defaults to process.cwd(). */
+  cwd?: string
 }
 
-export interface DshVerticalSliceRequest {
-  readonly policy: PolicyDocument
-  readonly runtime: RuntimeCapabilities
-  readonly categories: {
-    readonly planner: string
-    readonly workers: readonly string[]
-    readonly reviewer: string
-  }
-  readonly start: (options: DshSubagentStartOptions) => Promise<{ readonly output: string }>
+export const Config = {
+  defaults: undefined as PolicyLayerValue | undefined,
+  user: undefined as PolicyLayerValue | undefined,
+  cwd: undefined as string | undefined,
 }
 
-export interface DshTraceEntry {
-  readonly role: DshRole
-  readonly provider: string
-  readonly model: string
-}
+/** Install the DSHelm host service + official seams into a live context. */
+export async function apply(ctx: Context, config: Config): Promise<void> {
+  const cwd = config.cwd ?? process.cwd()
+  const defaults = config.defaults ?? { profiles: {}, agents: {}, categories: {} }
 
-export interface DshVerticalSliceResult {
-  readonly outputs: readonly string[]
-  readonly trace: readonly DshTraceEntry[]
-}
+  // User layer: settings namespace when a settings provider is composed,
+  // otherwise the static config layer. Live-read per resolve.
+  const readUser = installDSHelmSettings(ctx, (config.user ?? {}) as DSHelmUserSettings)
 
-export interface DshSubagentStartRequestLike {
-  readonly label?: string
-  readonly prompt: readonly { readonly type: 'text'; readonly text: string }[]
-  readonly parent: unknown
-  readonly signal: AbortSignal
-  readonly agentOptions?: { readonly provider?: string; readonly model?: string }
-}
-
-export interface DshSubagentRunLike {
-  readonly result: Promise<{
-    readonly output: readonly { readonly type?: string; readonly text?: string }[]
-    readonly stopReason: string
-  }>
-  readonly dispose: () => Promise<void>
-}
-
-export interface DshSubagentsRuntimeLike {
-  readonly start: (
-    provider: string,
-    request: DshSubagentStartRequestLike,
-  ) => Promise<DshSubagentRunLike>
-}
-
-export function createDshSubagentStarter(
-  subagents: DshSubagentsRuntimeLike,
-  provider: string,
-  parent: unknown,
-  signal: AbortSignal,
-): (options: DshSubagentStartOptions) => Promise<{ readonly output: string }> {
-  return async (options) => {
-    const run = await subagents.start(provider, {
-      label: `deephelm:${options.role}`,
-      prompt: [
-        {
-          type: 'text',
-          text: `DeepHelm role=${options.role} provider=${options.provider} model=${options.model} reasoning=${options.reasoning ?? 'default'}`,
-        },
-      ],
-      parent,
-      signal,
-      agentOptions: { provider: options.provider, model: options.model },
-    })
-    try {
-      const result = await run.result
-      if (result.stopReason !== 'completed') {
-        throw new Error(`DSH subagent ${options.role} ended with ${result.stopReason}`)
-      }
-      return {
-        output: result.output
-          .filter((block) => block.type === 'text' && block.text !== undefined)
-          .map((block) => block.text ?? '')
-          .join(''),
-      }
-    } finally {
-      await run.dispose()
+  // Project layer: committed .dshelm/config.jsonc (re-read per resolve so
+  // edits apply without restart; .dshelm/local/ stays runtime-local).
+  let projectCache: PolicyLayerValue | undefined
+  let projectLoaded = false
+  const readProject = async (): Promise<PolicyLayerValue | undefined> => {
+    if (!projectLoaded) {
+      projectCache = await loadProjectPolicyLayer(cwd)
+      projectLoaded = true
     }
+    return projectCache
   }
-}
+  void readProject() // warm the cache during apply (fail loud on malformed file)
 
-export interface DshProviderSnapshot {
-  readonly provider: string
-  readonly enabled: boolean
-  readonly models: readonly {
-    readonly model: string
-    readonly available: boolean
-  }[]
-}
-
-export interface DshLlmInventory {
-  readonly listProviders: () => readonly DshProviderSnapshot[]
-}
-
-export interface DshLlmRuntimeLike {
-  readonly listProviders: () => readonly { readonly id: string; readonly name: string }[]
-  readonly listModels: (
-    provider: string,
-  ) => Promise<readonly { readonly provider: string; readonly id: string; readonly name: string }[]>
-}
-
-export async function snapshotDshLlmRuntime(
-  runtime: DshLlmRuntimeLike,
-): Promise<RuntimeCapabilities> {
-  const providers: Record<
-    string,
-    { readonly enabled: boolean; readonly models: Record<string, { readonly available: boolean }> }
-  > = {}
-  const providerRows = [...runtime.listProviders()].sort((left, right) =>
-    left.id.localeCompare(right.id),
-  )
-  for (const provider of providerRows) {
-    if (providers[provider.id]) {
-      throw new Error(`DSH LlmRuntime returned duplicate provider ${provider.id}`)
-    }
-    const modelRows = [...(await runtime.listModels(provider.id))].sort((left, right) =>
-      left.id.localeCompare(right.id),
-    )
-    const models: Record<string, { readonly available: boolean }> = {}
-    for (const model of modelRows) {
-      if (model.provider !== provider.id) {
-        throw new Error(`DSH LlmRuntime returned mismatched model provider ${model.provider}`)
-      }
-      if (models[model.id]) {
-        throw new Error(`DSH LlmRuntime returned duplicate model ${provider.id}/${model.id}`)
-      }
-      models[model.id] = { available: true }
-    }
-    providers[provider.id] = { enabled: true, models }
-  }
-  return { providers }
-}
-
-export function mapDshInventory(inventory: DshLlmInventory): RuntimeCapabilities {
-  const providers: Record<
-    string,
-    { readonly enabled: boolean; readonly models: Record<string, { readonly available: boolean }> }
-  > = {}
-  for (const snapshot of inventory.listProviders()) {
-    const models: Record<string, { readonly available: boolean }> = {}
-    for (const model of snapshot.models) {
-      models[model.model] = { available: model.available }
-    }
-    providers[snapshot.provider] = { enabled: snapshot.enabled, models }
-  }
-  return { providers }
-}
-
-export async function runPlannerWorkersReviewer(
-  request: DshVerticalSliceRequest,
-): Promise<DshVerticalSliceResult> {
-  const trace: DshTraceEntry[] = []
-  const outputs: string[] = []
-
-  const planner = resolvePolicy(request.policy, request.runtime, {
-    category: request.categories.planner,
+  const layers = (): PolicyLayers => ({
+    defaults,
+    ...(readUser() !== undefined && Object.keys(readUser()!).length > 0 ? { user: readUser() as PolicyLayerValue } : {}),
+    ...(projectCache !== undefined ? { project: projectCache } : {}),
   })
-  const plannerResult = await request.start(toStartOptions('planner', planner))
-  trace.push(toTraceEntry('planner', planner))
-  outputs.push(plannerResult.output)
 
-  const workers = request.categories.workers.map((category) =>
-    resolvePolicy(request.policy, request.runtime, { category }),
-  )
-  for (const worker of workers) {
-    trace.push(toTraceEntry('worker', worker))
-  }
-  const workerResults = await Promise.all(
-    workers.map(async (worker) => {
-      const result = await request.start(toStartOptions('worker', worker))
-      return result.output
-    }),
-  )
-  outputs.push(...workerResults)
-
-  const reviewer = resolvePolicy(request.policy, request.runtime, {
-    category: request.categories.reviewer,
+  const service = new DSHelmPolicyService(ctx, {
+    layers,
+    llm: ctx.llm,
+    publish: (sessionId, snapshot) => {
+      // Host→client transport: whole-value session event folded by the
+      // session projection into the official projection wire frames.
+      ctx.sessions.get(SessionId(sessionId))?.append('dshelm/control-plane', snapshot)
+    },
   })
-  const reviewerResult = await request.start(toStartOptions('reviewer', reviewer))
-  trace.push(toTraceEntry('reviewer', reviewer))
-  outputs.push(reviewerResult.output)
+  // The Service base class registered itself on construction under
+  // 'dshelm.policy' (ctx.reflect.provide inside Service's constructor).
 
-  return { outputs, trace }
+  // Official seams, all fiber-owned (unwind with this plugin's disposal).
+  registerDSHelmProvider(ctx, {
+    service,
+    categoryForRole: (role) => role,
+    sessionIdOf: (request) => String(request.parent?.id ?? ''),
+  })
+
+  ctx.sessionProjections.register(dshelmControlPlaneProjection)
 }
 
-function toStartOptions(
-  role: DshRole,
-  resolved: ReturnType<typeof resolvePolicy>,
-): DshSubagentStartOptions {
-  return {
-    role,
-    provider: resolved.provider,
-    model: resolved.model,
-    ...(resolved.reasoning ? { reasoning: resolved.reasoning } : {}),
-  }
-}
-
-function toTraceEntry(
-  role: DshRole,
-  resolved: ReturnType<typeof resolvePolicy>,
-): DshTraceEntry {
-  return {
-    role,
-    provider: resolved.provider,
-    model: resolved.model,
-  }
-}
+export * from './capabilities.ts'
+export * from './config-files.ts'
+export * from './model-selection.ts'
+export * from './projection.ts'
+export * from './provider.ts'
+export * from './service.ts'
+export * from './session-events.ts'
+export * from './slice.ts'

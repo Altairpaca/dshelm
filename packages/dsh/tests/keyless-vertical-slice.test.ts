@@ -1,12 +1,29 @@
-import { pathToFileURL } from 'node:url'
+/**
+ * Keyless DSHelm contract smoke tests (hermetic: public npm packages only).
+ *
+ * Stage-1 replacement of the bootstrap-round test, which imported
+ * `../../deephelm-community/deepseek-harness` (non-hermetic, banned) and
+ * targeted the removed pre-hardening API (`createDshSubagentStarter` & co).
+ *
+ * Covered here: real DSHelmPolicyService resolution against a live LlmLike
+ * adapter contract, per-candidate traces, dynamic (unlisted-but-valid)
+ * models, the projection unit fold, and the wire schema gate. The plugin
+ * composition (apply/loader), the real agent loop, and the request/header
+ * proof live in the stage-3/5 suites.
+ */
 import { describe, expect, it } from 'vitest'
-import { type PolicyDocument, type RuntimeCapabilities } from '@deephelm/core'
+import { Context } from '@deepseek-ai/cordis'
 import {
-  createDshSubagentStarter,
-  snapshotDshLlmRuntime,
-  runPlannerWorkersReviewer,
-  type DshSubagentsRuntimeLike,
-  type DshSubagentStartOptions,
+  type PolicyDocument,
+  PolicyResolutionError,
+} from '@dshelm/core'
+import {
+  DSHelmPolicyService,
+  createDshCapabilities,
+  attachAdvisoryCatalog,
+  controlPlaneSchema,
+  dshelmControlPlaneProjection,
+  type LlmLike,
 } from '../src/index.ts'
 
 const policy: PolicyDocument = {
@@ -39,243 +56,194 @@ const policy: PolicyDocument = {
   },
 }
 
-const runtime: RuntimeCapabilities = {
-  providers: {
-    deepseek: {
-      enabled: true,
-      models: {
-        'deepseek-v4-pro': { available: true },
-        'deepseek-v4-flash': { available: true },
-      },
+function fakeLlm(): LlmLike {
+  return {
+    listProviders: () => [{ id: 'deepseek', name: 'DeepSeek' }],
+    resolveModelInfo: async (provider, model) => {
+      if (provider !== 'deepseek') throw Object.assign(new Error('no adapter'), { code: 'NO_ADAPTER' })
+      if (model === 'deepseek-v4-pro' || model === 'deepseek-v4-flash') {
+        return {
+          provider,
+          id: model,
+          name: model,
+          reasoning: { efforts: [{ id: 'high' }, { id: 'max' }], defaultEffort: 'high' },
+        }
+      }
+      if (model === 'dynamic-valid-model') {
+        // Unlisted in any catalog, but the adapter resolves it: valid.
+        return {
+          provider,
+          id: model,
+          name: model,
+          reasoning: { efforts: [{ id: 'off' }] },
+        }
+      }
+      throw Object.assign(new Error('unknown model'), { code: 'INVALID_MODEL_INFO' })
     },
-  },
+    listModels: async () => [
+      { provider: 'deepseek', id: 'deepseek-v4-pro', name: 'V4 Pro' },
+      { provider: 'deepseek', id: 'deepseek-v4-flash', name: 'V4 Flash' },
+    ],
+  }
 }
 
-describe('keyless planner-workers-reviewer vertical slice', () => {
-  it('maps resolved options into the public ctx.subagents.start request', async () => {
-    const calls: Array<{
-      readonly provider: string
-      readonly request: { readonly agentOptions?: { readonly provider?: string; readonly model?: string } }
-    }> = []
-    const controller = new AbortController()
-    const start = createDshSubagentStarter(
-      {
-        start: async (provider, request) => {
-          calls.push({ provider, request })
-          return {
-            result: Promise.resolve({
-              output: [{ type: 'text', text: 'subagent-sentinel' }],
-              stopReason: 'completed' as const,
-            }),
-            dispose: async () => {},
-          }
-        },
-      },
-      'spawn',
-      { id: 'parent-session' },
-      controller.signal,
-    )
+function makeService(llm: LlmLike = fakeLlm()): { service: DSHelmPolicyService } {
+  const ctx = new Context()
+  const service = new DSHelmPolicyService(ctx, {
+    layers: () => ({ defaults: policy }),
+    llm,
+  })
+  // Service registration is fiber-owned; the test context is discarded with
+  // the suite (official DSH tests use the same pattern).
+  return { service }
+}
 
-    const result = await start({
+describe('DSHelmPolicyService (hermetic, keyless)', () => {
+  it('registers the real dshelm.policy service on the context', async () => {
+    const ctx = new Context()
+    const service = new DSHelmPolicyService(ctx, {
+      layers: () => ({ defaults: policy }),
+      llm: fakeLlm(),
+    })
+    // Cordis registers the service through the reflect layer; the getter
+    // returns the live instance. Assert presence and real behavior.
+    expect(ctx.reflect.get('dshelm.policy')).toBeDefined()
+    await expect(service.resolve({ category: 'plan' })).resolves.toMatchObject({ provider: 'deepseek' })
+  })
+
+  it('resolves category → agent → profile → provider/model with reasoning', async () => {
+    const { service } = makeService()
+    const resolved = await service.resolve({ category: 'plan' })
+    expect(resolved).toMatchObject({
+      category: 'plan',
       role: 'planner',
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
+      reasoning: 'high',
     })
-
-    expect(result.output).toBe('subagent-sentinel')
-    expect(calls[0]?.provider).toBe('spawn')
-    expect(calls[0]?.request.agentOptions).toEqual({
-      provider: 'deepseek',
-      model: 'deepseek-v4-pro',
-    })
+    expect(resolved.trace.candidates).toHaveLength(1)
+    expect(resolved.trace.candidates[0]?.outcome).toBe('selected')
+    expect(resolved.trace.selected).toEqual({ provider: 'deepseek', model: 'deepseek-v4-pro', reasoning: 'high' })
+    expect(resolved.trace.fields.length).toBeGreaterThanOrEqual(3)
   })
 
-  it('invokes the pinned DSH SubagentRuntime service and disposes its run', async () => {
-    const dshRoot = new URL(
-      '../../deephelm-community/deepseek-harness/',
-      pathToFileURL(`${process.cwd()}/`).href,
-    )
-    const { Context } = await import(
-      new URL('vendor/cordis/lib/index.js', dshRoot).href
-    )
-    const { SubagentRuntime } = await import(
-      new URL('packages/subagent/subagent/lib/index.js', dshRoot).href
-    )
-    const context = new Context()
-    const runtimeFiber = await context.plugin(SubagentRuntime)
-    const calls: Array<{ readonly provider: string; readonly model?: string }> = []
-    let disposed = false
-    try {
-      const subagents = context.reflect.get('subagents') as DshSubagentsRuntimeLike & {
-        registerProvider: (provider: unknown) => () => void
-      }
-      expect(subagents).toBeDefined()
-      subagents.registerProvider({
-        name: 'deephelm-test',
-        capabilities: { outputSchema: false, depthLimit: false, toolFilter: false, persona: false },
-        inheritsParentContext: false,
-        start: async (request: {
-          readonly agentOptions?: { readonly provider?: string; readonly model?: string }
-        }) => {
-          calls.push({
-            provider: request.agentOptions?.provider ?? 'missing',
-            model: request.agentOptions?.model,
-          })
-          return {
-            id: 'child-session',
-            localAgent: undefined,
-            result: Promise.resolve({
-              output: [{ type: 'text', text: 'real-subagent-sentinel' }],
-              stopReason: 'completed',
-            }),
-            dispose: async () => {
-              disposed = true
+  it('accepts an unlisted-but-valid dynamic model (catalog is advisory)', async () => {
+    const llm = fakeLlm()
+    const { service } = makeService(llm)
+    // Profile-level reasoning ('high') applies to the override candidate too,
+    // so the override must pick an effort the dynamic model actually supports.
+    const resolved = await service.resolve({
+      category: 'plan',
+      override: { provider: 'deepseek', model: 'dynamic-valid-model', reasoning: 'off' },
+    })
+    expect(resolved.model).toBe('dynamic-valid-model')
+    expect(resolved.trace.candidates[0]?.outcome).toBe('selected')
+    // The catalog view (listModels) does not contain the model.
+    const catalog = await attachAdvisoryCatalog(createDshCapabilities(llm), llm)
+    expect(catalog.providers['deepseek']?.catalog?.['dynamic-valid-model']).toBeUndefined()
+  })
+
+  it('rejects a reasoning effort the exact model does not support', async () => {
+    const { service } = makeService()
+    await expect(service.resolve({
+      category: 'plan',
+      override: { provider: 'deepseek', model: 'deepseek-v4-pro', reasoning: 'max' },
+    })).resolves.toBeDefined()
+    await expect(service.resolve({
+      category: 'plan',
+      override: { provider: 'deepseek', model: 'dynamic-valid-model', reasoning: 'max' },
+    })).rejects.toMatchObject({ code: 'UNSUPPORTED_REASONING' })
+  })
+
+  it('aggregates per-candidate outcomes when every candidate fails', async () => {
+    const llm = fakeLlm()
+    const ctx = new Context()
+    const service = new DSHelmPolicyService(ctx, {
+      layers: () => ({
+        defaults: {
+          profiles: {
+            mixed: {
+              id: 'mixed',
+              candidates: [
+                { provider: 'disabled-provider', model: 'x' },
+                { provider: 'deepseek', model: 'does-not-exist' },
+              ],
             },
-          }
-        },
-      })
-      const start = createDshSubagentStarter(
-        subagents,
-        'deephelm-test',
-        { id: 'parent-session', session: { id: 'parent-session' } },
-        new AbortController().signal,
-      )
-      const result = await runPlannerWorkersReviewer({
-        policy,
-        runtime,
-        categories: {
-          planner: 'plan',
-          workers: ['execute', 'execute'],
-          reviewer: 'review',
-        },
-        start,
-      })
-      expect(result.outputs).toEqual([
-        'real-subagent-sentinel',
-        'real-subagent-sentinel',
-        'real-subagent-sentinel',
-        'real-subagent-sentinel',
-      ])
-      expect(calls).toEqual([
-        { provider: 'deepseek', model: 'deepseek-v4-pro' },
-        { provider: 'deepseek', model: 'deepseek-v4-flash' },
-        { provider: 'deepseek', model: 'deepseek-v4-flash' },
-        { provider: 'deepseek', model: 'deepseek-v4-pro' },
-      ])
-      expect(disposed).toBe(true)
-    } finally {
-      await runtimeFiber.dispose()
-    }
-  })
-
-  it('snapshots the public DSH LlmRuntime provider and model catalog', async () => {
-    const capabilities = await snapshotDshLlmRuntime({
-      listProviders: () => [{ id: 'deepseek', name: 'DeepSeek' }],
-      listModels: async (provider) => [
-        { provider, id: 'deepseek-v4-pro', name: 'V4 Pro' },
-        { provider, id: 'deepseek-v4-flash', name: 'V4 Flash' },
-      ],
-    })
-
-    expect(capabilities).toEqual({
-      providers: {
-        deepseek: {
-          enabled: true,
-          models: {
-            'deepseek-v4-pro': { available: true },
-            'deepseek-v4-flash': { available: true },
           },
+          agents: { a: { id: 'a', role: 'agent', profile: 'mixed' } },
+          categories: { c: { id: 'c', agent: 'a' } },
         },
+      }),
+      llm: {
+        ...llm,
+        listProviders: () => [{ id: 'deepseek', name: 'DeepSeek' }],
       },
     })
+    const error = await service.resolve({ category: 'c' }).then(() => null, (e: unknown) => e)
+    expect(error).toBeInstanceOf(PolicyResolutionError)
+    const resolutionError = error as PolicyResolutionError
+    expect(resolutionError.code).toBe('UNAVAILABLE_MODEL')
+    const outcomes = resolutionError.trace?.candidates.map((candidate) => candidate.outcome)
+    expect(outcomes).toEqual(['provider-unknown', 'model-invalid'])
+    // explain() returns the same canonical trace instead of throwing.
+    const trace = await service.explain({ category: 'c' })
+    expect(trace.candidates.map((candidate) => candidate.outcome)).toEqual(['provider-unknown', 'model-invalid'])
+    expect(trace.error?.code).toBe('UNAVAILABLE_MODEL')
   })
+})
 
-  it('pins resolved model options through the real adapter seam', async () => {
-    const events: string[] = []
-    const calls: DshSubagentStartOptions[] = []
-
-    const result = await runPlannerWorkersReviewer({
-      policy,
-      runtime,
-      categories: {
-        planner: 'plan',
-        workers: ['execute', 'execute'],
-        reviewer: 'review',
+describe('control-plane projection unit (hermetic)', () => {
+  it('folds dshelm/control-plane events into the projection value', () => {
+    const event = {
+      type: 'dshelm/control-plane',
+      seq: 1,
+      time: 0,
+      data: {
+        version: 1,
+        request: { category: 'plan' },
+        roles: [{ role: 'planner', category: 'plan', agent: 'planner', profile: 'planner', provider: 'deepseek', model: 'deepseek-v4-pro' }],
+        inspector: { request: 'plan', trace: { version: 1, request: { category: 'plan' }, category: 'plan', agent: 'planner', profile: 'planner', candidates: [], fields: [] } },
+        source: 'host:test',
       },
-      start: async (options) => {
-        calls.push(options)
-        events.push(`start:${options.role}`)
-        return { output: `${options.role}-sentinel` }
-      },
+    } as never
+    const next = dshelmControlPlaneProjection.apply(undefined, event)
+    expect(dshelmControlPlaneProjection.view(next)).toMatchObject({
+      request: { category: 'plan' },
+      roles: [{ role: 'planner' }],
+      source: 'host:test',
     })
-
-    expect(calls).toHaveLength(4)
-    expect(calls.map(({ role }) => role)).toEqual([
-      'planner',
-      'worker',
-      'worker',
-      'reviewer',
-    ])
-    expect(calls.map(({ provider, model }) => `${provider}/${model}`)).toEqual([
-      'deepseek/deepseek-v4-pro',
-      'deepseek/deepseek-v4-flash',
-      'deepseek/deepseek-v4-flash',
-      'deepseek/deepseek-v4-pro',
-    ])
-    expect(events).toEqual(['start:planner', 'start:worker', 'start:worker', 'start:reviewer'])
-    expect(result.outputs).toEqual([
-      'planner-sentinel',
-      'worker-sentinel',
-      'worker-sentinel',
-      'reviewer-sentinel',
-    ])
-    expect(result.trace.map(({ role, provider, model }) => `${role}:${provider}/${model}`)).toEqual(
-      calls.map(({ role, provider, model }) => `${role}:${provider}/${model}`),
-    )
+    // Uninteresting events return the same state reference.
+    const other = { type: 'user/message', seq: 2, time: 0, data: {} } as never
+    expect(dshelmControlPlaneProjection.apply(next, other)).toBe(next)
   })
 
-  it('mounts the policy service in the pinned Cordis Loader composition', async () => {
-    const dshRoot = new URL(
-      '../../deephelm-community/deepseek-harness/',
-      pathToFileURL(`${process.cwd()}/`).href,
-    )
-    const { Context } = await import(
-      new URL('vendor/cordis/lib/index.js', dshRoot).href
-    )
-    const { Loader } = await import(
-      new URL('vendor/loader/lib/index.js', dshRoot).href
-    )
-    const context = new Context()
-    const loaderFiber = await context.plugin(Loader)
-    const service = {
-      run: () =>
-        runPlannerWorkersReviewer({
-          policy,
-          runtime,
-          categories: {
-            planner: 'plan',
-            workers: ['execute', 'execute'],
-            reviewer: 'review',
-          },
-          start: async (options) => ({ output: `${options.role}-loader-sentinel` }),
-        }),
+  it('validates the wire payload with the official schema gate', () => {
+    const snapshot = {
+      version: 1,
+      request: { category: 'plan' },
+      roles: [],
+      inspector: { request: 'plan', trace: { version: 1, request: { category: 'plan' }, category: 'plan', agent: 'planner', profile: 'planner', candidates: [], fields: [] } },
+      source: 'host:test',
     }
+    expect(controlPlaneSchema.parse(snapshot)).toEqual(snapshot)
+    expect(() => controlPlaneSchema.parse({ ...snapshot, version: 2 })).toThrow()
+    expect(() => controlPlaneSchema.parse({ ...snapshot, roles: 'nope' })).toThrow()
+  })
+})
 
-    try {
-      await context.plugin((ctx: typeof context) => {
-        ctx.provide('deephelmPolicy', service)
-      })
-      expect(context.reflect.get('loader')?.constructor.name).toBe('Loader')
-      expect(context.reflect.get('deephelmPolicy')).toBe(service)
-      const result = await service.run()
-      expect(result.trace.map(({ role, model }) => `${role}:${model}`)).toEqual([
-        'planner:deepseek-v4-pro',
-        'worker:deepseek-v4-flash',
-        'worker:deepseek-v4-flash',
-        'reviewer:deepseek-v4-pro',
-      ])
-    } finally {
-      await loaderFiber.dispose()
-    }
+describe('runtime capabilities adapter (hermetic)', () => {
+  it('maps listProviders + resolveModelInfo onto RuntimeCapabilities', () => {
+    const capabilities = createDshCapabilities(fakeLlm())
+    expect(Object.keys(capabilities.providers)).toEqual(['deepseek'])
+    expect(capabilities.providers['deepseek']?.enabled).toBe(true)
+    expect(capabilities.providers['deepseek']?.catalog).toBeUndefined()
+  })
+
+  it('classifies provider/model resolution failures into the exact-model vocabulary', async () => {
+    const capabilities = createDshCapabilities(fakeLlm())
+    const resolve = capabilities.providers['deepseek']?.resolveModel
+    expect(resolve).toBeDefined()
+    const invalid = await resolve?.('does-not-exist')
+    expect(invalid).toEqual({ valid: false, reason: 'model-invalid' })
   })
 })

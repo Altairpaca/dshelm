@@ -33,7 +33,7 @@ Thumbs.db
 *.swo
 
 # local runtime state
-.deephelm/local/
+.dshelm/local/
 .omo/
 .ulw/
 .sisyphus/

@@ -1,20 +1,20 @@
 name: Bug report
-description: Report incorrect or unexpected DeepHelm behavior
+description: Report incorrect or unexpected DSHelm behavior
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      value: Thanks for helping improve DeepHelm. Please include enough information to reproduce the behavior.
+      value: Thanks for helping improve DSHelm. Please include enough information to reproduce the behavior.
   - type: input
     id: dsh-version
     attributes:
       label: DeepSeek Harness version
       placeholder: e.g. 0.0.x
   - type: input
-    id: deephelm-version
+    id: dshelm-version
     attributes:
-      label: DeepHelm version / commit
+      label: DSHelm version / commit
       placeholder: e.g. main@abcdef
   - type: textarea
     id: description
@@ -32,4 +32,4 @@ body:
     id: resolution
     attributes:
       label: Resolution trace / logs
-      description: If available, paste the DeepHelm resolution trace or relevant logs. Remove credentials and secrets.
+      description: If available, paste the DSHelm resolution trace or relevant logs. Remove credentials and secrets.

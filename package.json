@@ -1,5 +1,5 @@
 {
-  "name": "deephelm",
+  "name": "dshelm",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
+    "fast-check": "^3.23.2",
     "playwright": "^1.52.0",
     "tsx": "^4.22.0",
     "typescript": "^6.0.3",

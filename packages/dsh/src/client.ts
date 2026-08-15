@@ -24,20 +24,20 @@ export interface ControlPlaneSnapshot {
   }
 }
 
-export interface DeepHelmPolicyClientService {
+export interface DSHelmPolicyClientService {
   readonly snapshot: () => ControlPlaneSnapshot
   readonly subscribe?: (listener: () => void) => () => void
 }
 
-export interface DeepHelmClientContext {
-  readonly deephelmPolicy: DeepHelmPolicyClientService
+export interface DSHelmClientContext {
+  readonly dshelmPolicy: DSHelmPolicyClientService
   readonly effect?: (cleanup: () => void, label?: string) => void
 }
 
-export const inject = ['deephelmPolicy'] as const
+export const inject = ['dshelmPolicy'] as const
 
 const styleText = `
-  [data-deephelm-control-plane] {
+  [data-dshelm-control-plane] {
     --dh-bg: #0b1020;
     --dh-panel: #121a2b;
     --dh-panel-2: #172239;
@@ -54,13 +54,13 @@ const styleText = `
     max-width: 1080px;
     padding: 24px;
   }
-  [data-deephelm-control-plane] h1,
-  [data-deephelm-control-plane] h2,
-  [data-deephelm-control-plane] p { margin: 0; }
-  [data-deephelm-control-plane] header { margin-bottom: 20px; }
-  [data-deephelm-control-plane] header p { color: var(--dh-muted); margin-top: 5px; }
-  [data-deephelm-control-plane] table { border-collapse: collapse; width: 100%; }
-  [data-deephelm-control-plane] th {
+  [data-dshelm-control-plane] h1,
+  [data-dshelm-control-plane] h2,
+  [data-dshelm-control-plane] p { margin: 0; }
+  [data-dshelm-control-plane] header { margin-bottom: 20px; }
+  [data-dshelm-control-plane] header p { color: var(--dh-muted); margin-top: 5px; }
+  [data-dshelm-control-plane] table { border-collapse: collapse; width: 100%; }
+  [data-dshelm-control-plane] th {
     color: var(--dh-muted);
     font-size: 11px;
     letter-spacing: .08em;
@@ -68,31 +68,31 @@ const styleText = `
     text-align: left;
     text-transform: uppercase;
   }
-  [data-deephelm-control-plane] td {
+  [data-dshelm-control-plane] td {
     border-top: 1px solid var(--dh-line);
     padding: 12px 10px;
   }
-  [data-deephelm-control-plane] code {
+  [data-dshelm-control-plane] code {
     background: var(--dh-panel-2);
     border-radius: 5px;
     color: var(--dh-accent);
     padding: 3px 6px;
   }
-  [data-deephelm-control-plane] details {
+  [data-dshelm-control-plane] details {
     background: color-mix(in srgb, var(--dh-panel) 92%, white);
     border: 1px solid var(--dh-line);
     border-radius: 10px;
     margin-top: 20px;
     padding: 15px;
   }
-  [data-deephelm-control-plane] summary { cursor: pointer; font-weight: 650; }
-  [data-deephelm-control-plane] ol { color: var(--dh-muted); margin-bottom: 0; }
-  [data-deephelm-control-plane] li { padding: 4px 0; }
-  [data-deephelm-control-plane] li strong { color: var(--dh-text); }
+  [data-dshelm-control-plane] summary { cursor: pointer; font-weight: 650; }
+  [data-dshelm-control-plane] ol { color: var(--dh-muted); margin-bottom: 0; }
+  [data-dshelm-control-plane] li { padding: 4px 0; }
+  [data-dshelm-control-plane] li strong { color: var(--dh-text); }
   @media (max-width: 640px) {
-    [data-deephelm-control-plane] { border-radius: 0; margin: 0; padding: 16px; }
-    [data-deephelm-control-plane] table { font-size: 12px; }
-    [data-deephelm-control-plane] th, [data-deephelm-control-plane] td { padding: 8px 5px; }
+    [data-dshelm-control-plane] { border-radius: 0; margin: 0; padding: 16px; }
+    [data-dshelm-control-plane] table { font-size: 12px; }
+    [data-dshelm-control-plane] th, [data-dshelm-control-plane] td { padding: 8px 5px; }
   }
 `
 
@@ -101,14 +101,14 @@ export function renderControlPlane(
   snapshot: ControlPlaneSnapshot,
 ): void {
   root.replaceChildren()
-  root.dataset.deephelmControlPlane = ''
+  root.dataset.dshelmControlPlane = ''
   const style = document.createElement('style')
   style.textContent = styleText
   root.append(style)
 
   const header = document.createElement('header')
   const title = document.createElement('h1')
-  title.textContent = 'DeepHelm Control Plane'
+  title.textContent = 'DSHelm Control Plane'
   const subtitle = document.createElement('p')
   subtitle.textContent = 'Runtime-aware policy resolution and provenance'
   header.append(title, subtitle)
@@ -116,7 +116,7 @@ export function renderControlPlane(
   const heading = document.createElement('h2')
   heading.textContent = 'Roles × Models'
   const table = document.createElement('table')
-  table.dataset.deephelmMatrix = ''
+  table.dataset.dshelmMatrix = ''
   table.innerHTML = '<thead><tr><th>Role</th><th>Provider</th><th>Model</th><th>Reasoning</th></tr></thead>'
   const body = document.createElement('tbody')
   for (const role of snapshot.roles) {
@@ -133,7 +133,7 @@ export function renderControlPlane(
   table.append(body)
 
   const inspector = document.createElement('details')
-  inspector.dataset.deephelmInspector = ''
+  inspector.dataset.dshelmInspector = ''
   inspector.open = true
   const summary = document.createElement('summary')
   summary.textContent = `Resolution Inspector · ${snapshot.inspector.request}`
@@ -154,17 +154,17 @@ export function renderControlPlane(
   root.append(header, heading, table, inspector)
 }
 
-export function apply(ctx: DeepHelmClientContext): () => void {
+export function apply(ctx: DSHelmClientContext): () => void {
   const host = document.createElement('section')
   document.body.append(host)
-  const render = (): void => renderControlPlane(host, ctx.deephelmPolicy.snapshot())
+  const render = (): void => renderControlPlane(host, ctx.dshelmPolicy.snapshot())
   render()
-  const unsubscribe = ctx.deephelmPolicy.subscribe?.(render)
+  const unsubscribe = ctx.dshelmPolicy.subscribe?.(render)
   const cleanup = (): void => {
     unsubscribe?.()
     host.remove()
   }
-  ctx.effect?.(cleanup, 'deephelm: control plane')
+  ctx.effect?.(cleanup, 'dshelm: control plane')
   return cleanup
 }
 

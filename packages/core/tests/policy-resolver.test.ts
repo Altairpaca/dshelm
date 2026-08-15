@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canonicalJson,
   resolvePolicy,
   type PolicyDocument,
   type RuntimeCapabilities,
@@ -7,9 +8,9 @@ import {
 
 const policy: PolicyDocument = {
   profiles: {
-    'reasoning-high': {
-      id: 'reasoning-high',
-      reasoning: 'high',
+    'reasoning-max': {
+      id: 'reasoning-max',
+      reasoning: 'max',
       candidates: [
         { provider: 'deepseek', model: 'deepseek-v4-pro' },
         { provider: 'deepseek', model: 'deepseek-v4-flash' },
@@ -17,7 +18,7 @@ const policy: PolicyDocument = {
     },
     'execution-fast': {
       id: 'execution-fast',
-      reasoning: 'medium',
+      reasoning: 'high',
       candidates: [{ provider: 'deepseek', model: 'deepseek-v4-flash' }],
     },
   },
@@ -25,13 +26,15 @@ const policy: PolicyDocument = {
     planner: {
       id: 'planner',
       role: 'planner',
-      profile: 'reasoning-high',
+      profile: 'reasoning-max',
+      persona: 'You are the planner.',
+      maxDepth: 3,
       skills: ['planning'],
       tools: { allow: ['read'], deny: ['shell'] },
       verification: { required: true, maxIterations: 2 },
     },
     worker: { id: 'worker', role: 'worker', profile: 'execution-fast' },
-    reviewer: { id: 'reviewer', role: 'reviewer', profile: 'reasoning-high' },
+    reviewer: { id: 'reviewer', role: 'reviewer', profile: 'reasoning-max' },
   },
   categories: {
     deep: { id: 'deep', agent: 'planner' },
@@ -44,62 +47,106 @@ const runtime: RuntimeCapabilities = {
   providers: {
     deepseek: {
       enabled: true,
-      models: {
-        'deepseek-v4-pro': { available: true },
-        'deepseek-v4-flash': { available: true },
-      },
+      resolveModel: (model) => ({
+        valid: true,
+        reasoningEfforts: ['off', 'high', 'max'],
+        defaultReasoningEffort: 'high',
+      }),
     },
   },
 }
 
 describe('resolvePolicy', () => {
-  it('resolves a category to an agent and keeps provenance for every choice', () => {
-    const resolved = resolvePolicy(policy, runtime, { category: 'deep' })
+  it('resolves a category to an agent and keeps provenance for every choice', async () => {
+    const resolved = await resolvePolicy(policy, runtime, { category: 'deep' })
 
     expect(resolved).toMatchObject({
       category: 'deep',
       role: 'planner',
       provider: 'deepseek',
       model: 'deepseek-v4-pro',
-      reasoning: 'high',
+      reasoning: 'max',
+      persona: 'You are the planner.',
+      maxDepth: 3,
       skills: ['planning'],
       tools: { allow: ['read'], deny: ['shell'] },
       verification: { required: true, maxIterations: 2 },
     })
-    expect(resolved.trace).toEqual(
+    expect(resolved.trace.fields).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: 'agent', source: 'category.deep' }),
         expect.objectContaining({ field: 'modelProfile', source: 'agent.planner' }),
-        expect.objectContaining({ field: 'model', source: 'modelProfile.reasoning-high' }),
+        expect.objectContaining({ field: 'model', source: 'modelProfile.reasoning-max' }),
+        expect.objectContaining({ field: 'reasoning', source: 'modelProfile.reasoning-max', value: 'max' }),
+        expect.objectContaining({ field: 'persona', source: 'agent.planner' }),
+        expect.objectContaining({ field: 'maxDepth', source: 'agent.planner', value: '3' }),
+      ]),
+    )
+    // skills are explicitly metadata-only in v0.1
+    expect(resolved.trace.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: 'skills', kind: 'metadata-only' }),
       ]),
     )
   })
 
-  it('lets an explicit request override the resolved model and reasoning', () => {
-    const resolved = resolvePolicy(policy, runtime, {
+  it('lets an explicit request override the resolved model and reasoning', async () => {
+    const resolved = await resolvePolicy(policy, runtime, {
       category: 'deep',
       override: {
         provider: 'deepseek',
         model: 'deepseek-v4-flash',
-        reasoning: 'medium',
+        reasoning: 'off',
       },
     })
 
     expect(resolved.model).toBe('deepseek-v4-flash')
-    expect(resolved.reasoning).toBe('medium')
-    expect(resolved.trace).toEqual(
+    expect(resolved.reasoning).toBe('off')
+    expect(resolved.trace.fields).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ field: 'model', source: 'request.override' }),
-        expect.objectContaining({ field: 'reasoning', source: 'request.override' }),
+        expect.objectContaining({ field: 'reasoning', source: 'request.override', value: 'off' }),
       ]),
     )
+    expect(resolved.trace.candidates).toEqual([
+      expect.objectContaining({ provider: 'deepseek', model: 'deepseek-v4-flash', outcome: 'selected' }),
+    ])
   })
 
-  it('is deterministic and JSON serializable for the same snapshot and inventory', () => {
-    const first = resolvePolicy(policy, runtime, { category: 'execute' })
-    const second = resolvePolicy(policy, runtime, { category: 'execute' })
+  it('treats reasoning as an opaque adapter-owned identifier (never core vocabulary)', async () => {
+    // An adapter-owned opaque id (not in any core vocabulary) is accepted
+    // end-to-end when the exact model's runtime capability supports it.
+    const exotic = await resolvePolicy(policy, {
+      providers: {
+        deepseek: {
+          enabled: true,
+          resolveModel: () => ({ valid: true, reasoningEfforts: ['deep-think-v9'] }),
+        },
+      },
+    }, { category: 'deep', override: { provider: 'deepseek', model: 'deepseek-v4-pro', reasoning: 'deep-think-v9' } })
+    expect(exotic.reasoning).toBe('deep-think-v9')
+    expect(exotic.trace.selected?.reasoning).toBe('deep-think-v9')
+
+    // The same opaque id requested against a model that does not support it
+    // must fail loudly — the core does not invent or alias efforts.
+    await expect(
+      resolvePolicy(policy, {
+        providers: {
+          deepseek: {
+            enabled: true,
+            resolveModel: () => ({ valid: true, reasoningEfforts: ['deep-think-v9'] }),
+          },
+        },
+      }, { category: 'deep' }),
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_REASONING' })
+  })
+
+  it('is deterministic and JSON serializable for the same snapshot and inventory', async () => {
+    const first = await resolvePolicy(policy, runtime, { category: 'execute' })
+    const second = await resolvePolicy(policy, runtime, { category: 'execute' })
 
     expect(second).toEqual(first)
     expect(JSON.parse(JSON.stringify(first))).toEqual(first)
+    expect(canonicalJson(first)).toBe(canonicalJson(second))
   })
 })

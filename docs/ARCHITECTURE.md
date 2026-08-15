@@ -1,203 +1,223 @@
-# DeepHelm Architecture
+# DSHelm Architecture
 
-This document records the intended architectural boundary for DeepHelm while the project is still pre-alpha. It is a design target, not an API guarantee.
+This document records the intended architectural boundary for DSHelm while the
+project is still pre-alpha. It is a design target, not an API guarantee.
 
-## What DeepHelm owns
+## What DSHelm is
 
-DeepHelm should own policy and policy resolution:
+DSHelm is the **batteries-included agent layer for DeepSeek Harness (DSH)** —
+an OmO-inspired, DSH-native, ecosystem-composable agent distribution.
 
-- agent role definitions;
-- model/provider profiles;
-- category and capability routing;
-- prompt/tool/skill policy;
-- fallback, verification, budget, and concurrency policy;
-- resolution traces that explain the effective runtime configuration;
-- a visual control plane for editing and inspecting those policies.
+- DSHelm is NOT a DSH fork.
+- DSHelm is NOT another agent loop.
+- DSHelm is NOT another AgentTeams.
+- DSHelm is NOT a 700-plugin collection.
 
-## What DeepHelm should not own
+It is an integrated distribution: a deterministic policy/routing kernel plus a
+user-facing product surface (agents, roles, model profiles, skills, teams and
+workflow integration, observability, Web control surfaces, conversation
+interop) whose execution is composed from DSH-native primitives and mature
+ecosystem capabilities wherever they exist.
 
-DeepHelm should not become a second DeepSeek Harness runtime. In particular, it should avoid reimplementing execution primitives already provided by DSH or mature ecosystem plugins, including session lifecycle, generic subagent execution, workflow persistence, provider transports, or terminal/runtime infrastructure.
-
-The default question should be: **can DeepHelm configure or compose this capability instead of replacing it?**
-
-## DSH-first architecture
+## Layering
 
 ```text
-User / WebUI
-    │
-    ▼
-DeepHelm Policy Model
-    │
-    ▼
-Deterministic Resolver ───────► Resolution Trace
-    │
-    ▼
-DSH Adapter / Cordis Service
-    │
-    ├──► subagents
-    ├──► presets
-    ├──► workflows
-    └──► compatible DSH plugins
+                 DSHelm
+        batteries-included agent layer
+                    |
+          +---------+----------+
+          |                    |
+     DSHelm Core          Integrated UX
+ policy/config/trace      web/agents/skills
+          |
+     Execution Adapters
+          |
+  +-------+--------+---------+
+  |                |         |
+DSH Native     AgentTeams   Workflow/...
+  |
+DeepSeek Harness
 ```
 
-## Implemented v0.1 boundary
+## What DSHelm Core owns
 
-The bootstrap implementation keeps this boundary concrete:
+DSHelm Core owns policy and policy resolution only:
 
-- `packages/core` contains serializable contracts, JSONC layer loading,
-  deterministic resolution, runtime capability validation, tool/skill/
-  verification policy, and trace provenance. It imports no DSH package.
-- `packages/dsh` contains the DSH inventory mapper, a thin adapter over
-  `ctx.subagents.start`, the ordered planner/worker/reviewer runner, the
-  Cordis bundle patch, and the native client module.
-- DSH's `LlmRuntime.listProviders()` and `listModels(provider)` are snapshotted
-  before resolution. `SubagentRuntime.start(provider, request)` receives the
-  resolved `agentOptions.provider` and `agentOptions.model`; returned runs are
-  always disposed.
-- The client calls `apply(ctx)` with a host-provided `deephelmPolicy.snapshot`
-  service. The browser is never the policy source of truth.
+- agent role definitions;
+- model/provider profiles (ordered candidates, fallback);
+- category and capability routing;
+- tool/persona/depth/skills policy (skills are metadata-only in v0.1);
+- verification policy (bounded revision);
+- reasoning-effort policy as opaque adapter-owned identifiers;
+- runtime capability validation (exact-model seams, NOT catalog membership);
+- resolution traces that explain the effective runtime configuration;
+- configuration precedence: defaults → user → project → request → runtime
+  validation (`.dshelm/config.jsonc` + `.dshelm/local/` gitignored).
 
-The reference API evidence is pinned to
-`47f943859bef60e4160492346772ded9b24f765a`. The implementation does not patch
-DSH core or recreate DSH sessions, teams, workflows, or provider transports.
+Core imports no DSH package and no AgentTeams.
+
+## What DSHelm should not own
+
+DSHelm should not become a second DeepSeek Harness runtime. In particular, it
+must not reimplement execution primitives already provided by DSH or mature
+ecosystem plugins:
+
+- session lifecycle;
+- generic subagent execution (in-process driver, spawn/fork providers);
+- provider transport and adapter registration;
+- durable team mailbox / team state (dsh-agent-teams owns this; DSHelm
+  provides policy → AgentTeams adapter direction, not a second runtime);
+- workflow persistence (workflow plugins own this);
+- generic fallback runtime (fallback/router plugins own this);
+- terminal/runtime infrastructure;
+- DSH Web shell (DSHelm composes into it via official slots).
+
+The default question is: **can DSHelm configure or compose this capability
+instead of replacing it?**
+
+## Execution adapters
+
+v0.1 ships the **DSH Native** adapter: resolved policy maps onto official seams
+(`AgentRegistry.create` + `installModelSelection`, `SubagentStartRequest`
+fields, in-process driver, session projection). Future backends (agent-teams,
+workflow) plug in behind a thin adapter contract; `packages/core` never
+depends on any backend.
+
+## DSH-native integration surface (v0.1, implemented)
+
+- `dshelm.policy` — real Cordis host service (resolve / explain / snapshot /
+  recordDelegation) provided by the DSHelm bundle itself; fiber-owned
+  lifecycle; duplicate registration fails loud.
+- `dshelm` subagent provider — maps resolved policy onto
+  `SubagentStartRequest` (persona, toolFilter, maxDepth, agentOptions);
+  delegates to the official in-process driver; unsupported capabilities fail
+  loud via `UNSUPPORTED_CAPABILITY`.
+- Model selection — official `installModelSelection` composition so
+  provider/model/reasoningEffort reach the request config, get validated by
+  `prepareCall`, are logged as `request/header`, and reach the adapter as
+  `GenerateOptions`.
+- Exact-model validation — `ctx.llm.resolveModelInfo`; `listModels` is
+  advisory catalog metadata and never a routing gate.
+- Host→client transport — whole-value `dshelm/control-plane` session events
+  folded by `dshelm.controlPlane` session projection into official
+  `session/projection` wire frames; client consumes via `useProjection`
+  (RPC surface is fixed; no plugin RPC extension point exists).
+- Client UI — DSH-native slot registration (SessionProjection-derived);
+  renderer smoke (`qa:web-renderer`) is explicitly separated from real DSH
+  Web QA (`qa:dsh-web`).
 
 ## Configuration precedence
 
-Policy layers are JSON or JSONC and merge from lowest to highest precedence:
+Policy layers are JSON/JSONC and merge from lowest to highest precedence:
 
 ```text
 defaults -> user -> project -> request -> runtime capability validation
 ```
 
-Malformed JSONC and unknown top-level keys produce machine-readable
-`ConfigResolutionError` diagnostics. Credentials are not accepted as policy
-values. Static declarations are not enough to select a model: the live DSH
-inventory must report the provider and model as available.
+- `.dshelm/config.jsonc` is the committed project layer.
+- `.dshelm/local/` is gitignored runtime-local state.
+- The user layer comes from `ctx.settings` (official settings namespace)
+  when a settings provider is composed.
+- Malformed JSONC, unknown keys, ID mismatches, dangling references, empty
+  candidate lists, protected keys, and non-JSON values produce
+  machine-readable `ConfigResolutionError` diagnostics. The merged document
+  is deep-frozen and plain-JSON round-trip validated before use.
 
-The first implementation should target public DSH capability seams directly. A harness-neutral core is useful only where the abstraction survives contact with a real DSH implementation.
-
-## Core domain model
-
-The exact TypeScript schema is not final. The initial model should be small enough to reason about and strict enough to resolve deterministically.
+## Core domain model (v0.1)
 
 ```ts
 interface ModelProfile {
   id: string
-  provider?: string
-  model?: string
+  candidates: ModelCandidate[]   // ordered; first selectable wins
+  reasoning?: string             // opaque adapter-owned effort id
+}
+
+interface ModelCandidate {
+  provider: string
+  model: string
   reasoning?: string
-  fallbacks?: string[]
 }
 
 interface AgentSpec {
   id: string
-  role?: string
-  modelProfile?: string
-  persona?: string
-  promptAppend?: string[]
-  tools?: {
-    allow?: string[]
-    deny?: string[]
-  }
-  skills?: string[]
+  role: string
+  profile: string                // profile id reference
+  persona?: string               // SubagentStartRequest.persona
+  maxDepth?: number              // SubagentStartRequest.maxDepth
+  tools?: { allow?: string[]; deny?: string[] }  // toolFilter
+  skills?: string[]              // METADATA-ONLY in v0.1
+  verification?: { required: boolean; maxIterations?: number }
 }
 
 interface CategorySpec {
   id: string
-  agent?: string
-  modelProfile?: string
+  agent: string                 // agent id reference
 }
 ```
 
-Future policy types may cover verification, retry, budget, depth, concurrency, and workflow composition. They should not be added before their resolution semantics are clear.
+`inherits` was REMOVED in v0.1 (no real use case; alias chasing made child
+fields silently vanish). Categories have no inheritance.
 
 ## Resolution requirements
 
-Policy resolution should be:
+Policy resolution must be:
 
-1. **Deterministic** — the same inputs and policy snapshot produce the same resolved configuration.
-2. **Traceable** — every override has a visible source.
-3. **Layered** — defaults, profiles, categories, agents, and request-level overrides have an explicit precedence order.
-4. **Validatable** — unknown providers/models/skills and contradictory policies should fail early or produce explicit warnings.
-5. **Serializable** — the resolved policy can be inspected, logged, tested, and reproduced.
-
-A resolution trace should eventually look like:
-
-```text
-review-task
-  category = review                 [request classifier]
-  agent = reviewer                  [category:review]
-  modelProfile = reasoning-high     [agent:reviewer]
-  provider = deepseek               [profile:reasoning-high]
-  model = deepseek-v4-pro           [profile:reasoning-high]
-  verification = independent        [agent:reviewer]
-```
-
-## Integration contract
-
-The DSH integration should expose a stable DeepHelm-facing service rather than requiring every consumer to understand internal storage or UI state.
-
-Conceptually:
-
-```ts
-interface AgentPolicyService {
-  resolve(request: ResolveRequest): Promise<ResolvedAgentPolicy>
-  explain(request: ResolveRequest): Promise<ResolutionTrace>
-  listAgents(): Promise<AgentSpec[]>
-  listModelProfiles(): Promise<ModelProfile[]>
-}
-```
-
-The concrete Cordis service name and API will be chosen after validating DSH conventions in code.
+1. **Deterministic** — the same inputs and policy snapshot produce the same
+   resolved configuration and the same serialized trace.
+2. **Traceable** — every candidate evaluation and field override has a visible
+   source; the Resolution Inspector consumes the canonical trace structure.
+3. **Layered** — defaults, user, project, categories, agents, and request-level
+   overrides have an explicit precedence order.
+4. **Validatable** — runtime capability answers (exact model, reasoning
+   support) gate selection; unknown providers/models/efforts fail loud.
+5. **Serializable** — the resolved policy and trace can be inspected, logged,
+   tested, and reproduced.
 
 ## Web control plane
 
-The first useful UI should prioritize configuration clarity over visual complexity.
+The first useful UI prioritizes configuration clarity over visual complexity:
 
-A minimal agent × model matrix:
-
-```text
-Role        Provider      Model            Reasoning   Fallback
-planner     DeepSeek      V4 Pro           high        ...
-executor    DeepSeek      V4 Flash         normal      ...
-reviewer    DeepSeek      V4 Pro           high        ...
-```
-
-The more important feature is the **resolved configuration inspector**. Users should be able to select a delegated run and see which category, agent, profile, provider, tools, and policies produced it.
+- a Roles × Models matrix;
+- a **Resolution Inspector** showing category, agent, profile, provider,
+  model, reasoning, candidate rejections, tools, persona, depth,
+  verification, and provenance — all rendered from the canonical host/core
+  trace, never from a second UI-only explanation model.
 
 ## Compatibility strategy
 
-DeepHelm should prefer adapters and importers over source-level coupling to other harness projects.
-
-For external configuration ecosystems:
+DSHelm prefers adapters and importers over source-level coupling to other
+harness projects. OmO is a behavioral/product/UX reference; its source is
+never copied. For external configuration ecosystems (future):
 
 1. parse the source configuration;
-2. convert supported concepts into the DeepHelm policy model;
+2. convert supported concepts into the DSHelm policy model;
 3. show unsupported or lossy mappings explicitly;
 4. never silently change execution semantics;
 5. respect the upstream project's license for any reused code or assets.
 
+Conversation import (INDEX / ARCHIVE / CONTINUE) is designed in the
+conversation-import ADR; no importer ships in v0.1.
+
 ## v0.1 acceptance criteria
 
-v0.1 should not mean feature parity with any other agent framework. It should mean that the architecture is real.
+v0.1 does not mean feature parity with any other agent framework. It means the
+architecture is real:
 
-A v0.1 candidate should be able to:
+- at least three roles with different model profiles resolve deterministically;
+- exact-model validation goes through the runtime seam (not catalog
+  membership), and dynamic unlisted-but-valid models resolve;
+- resolved provider/model/reasoningEffort appear in the actual DSH request
+  config (`request/header` == ResolutionTrace), proven by a keyless test
+  with a real agent loop and test adapter;
+- a planner → workers → reviewer slice runs with real data flow
+  (PlanArtifact → WorkerResults → structured verdict → bounded revision);
+- the effective routing decision is visible in the WebUI from the canonical
+  trace;
+- the same decision reproduces from the same policy snapshot;
+- all of the above without patching DSH core.
 
-- define at least three roles with different model profiles;
-- resolve a task category into a concrete DSH subagent configuration;
-- run a planner → workers → reviewer flow using genuinely heterogeneous model assignments;
-- show the effective routing decision in the WebUI;
-- reproduce the same decision from the same policy snapshot;
-- do all of the above without patching DSH core.
+## Reference evidence
 
-## Open design questions
-
-These decisions are intentionally not frozen yet:
-
-- JSON/JSONC/YAML vs DSH-native configuration representation;
-- monorepo/package boundaries;
-- exact Cordis service API;
-- whether routing classification belongs in core or a plugin;
-- how model capability metadata is discovered;
-- interoperability contracts with workflow/team plugins;
-- how much of the WebUI should be DSH-native versus reusable.
+The DSH seam evidence table lives in
+`docs/decisions/v0.1-alpha-hardening.md` §3 (pinned checkout
+`47f943859bef60e4160492346772ded9b24f765a`, installed CLI `0.1.0-rc.6`).

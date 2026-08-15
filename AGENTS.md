@@ -1,20 +1,52 @@
-# DeepHelm Development Contract
+# DSHelm Development Contract
 
 ## Product boundary
 
-DeepHelm is the policy and control plane for DeepSeek Harness (DSH).
-DSH is the execution plane. DeepHelm owns roles, categories, model
-profiles, deterministic resolution, runtime capability validation,
-provenance traces, and configuration/observability surfaces.
+DSHelm is the **batteries-included agent layer for DeepSeek Harness (DSH)** —
+an OmO-inspired, DSH-native, ecosystem-composable agent distribution.
+DSH is the execution foundation; DSHelm is the integrated agent layer on top.
 
-Do not reimplement sessions, generic subagents, provider transport,
-durable workflows, teams, terminal infrastructure, or fallback runtimes
+**DSHelm Core** is the policy / configuration / routing kernel: roles,
+categories, model profiles, deterministic resolution, runtime capability
+validation, provenance traces (Resolution Trace), and
+configuration/observability surfaces. It imports no DSH package.
+
+Execution is **composed** from DSH-native primitives and mature ecosystem
+capabilities wherever they exist. A user-visible DSHelm feature (teams,
+workflows, fallback) does not imply DSHelm reimplements its runtime.
+
+Do not reimplement sessions, generic subagents, provider transport, durable
+workflows, team mailboxes/state, terminal infrastructure, or fallback runtimes
 that DSH or an ecosystem plugin already provides.
+
+## Community reuse rule
+
+Before implementing any capability, ask:
+
+1. Does DSH core already provide it?
+2. Does a mature DSH plugin already provide it?
+3. Do AgentTeams / workflow / fallback / router plugins already provide it?
+4. Does Oh-My-DSH offer an adoptable or reference plugin?
+5. Is there a real gap?
+
+Only a real gap justifies own implementation. In particular, DSHelm does not
+write a second team runtime: the direction is DSHelm policy → an AgentTeams
+adapter/backend. Every third-party dependency is vetted (package.json,
+license, dsh.bundle, peerDependencies, scripts, DSH compatibility, source/API,
+lifecycle, test quality) before it becomes a dependency.
+
+## OmO boundary
+
+OmO is a **behavioral / product / UX reference** only. Its SUL-1.0 source,
+schema, and implementation must not be copied into DSHelm. Port behaviors and
+experiences, never source.
 
 ## Integration rules
 
 - Read `README.md` and `docs/ARCHITECTURE.md` before changing architecture.
-- Use public DSH/Cordis seams; never patch the DSH core checkout.
+- Use public DSH/Cordis seams; never patch the DSH core checkout. The DSH
+  mux-flood hotfix in `patches/` is a development-environment workaround, not
+  a DSHelm runtime dependency.
 - Verify every DSH API against the pinned reference checkout currently used
   by this repository. Do not rely on remembered interfaces.
 - Keep `packages/core` independent of DSH. Keep `packages/dsh` thin.
@@ -26,12 +58,19 @@ that DSH or an ecosystem plugin already provides.
 - Every material override records provenance and remains visible to tests and
   the control plane.
 - UI state is not the source of truth; host/core policy state is.
-- OmO is a behavioral and documentation reference only. Its SUL-1.0 source,
-  schema, and implementation must not be copied into DeepHelm.
+- `listModels` is advisory catalog metadata; exact-model validity comes from
+  `resolveModelInfo`-class seams at runtime.
+- Reasoning efforts are adapter-owned opaque identifiers; core invents no
+  `low|medium|high` vocabulary, and resolved reasoning must reach the actual
+  DSH request config (never metadata-only).
+- Heterogeneous model claims require request/header evidence, not just config.
 
 ## Testing and documentation
 
 - Public semantic changes require tests and concise documentation.
+- Default tests are hermetic (public npm packages); no external checkout paths
+  may become implicit test dependencies. An optional `DSH_REFERENCE_DIR`
+  source lane is explicit and never required by default CI.
 - Prefer keyless composition tests before credentialed DSH E2E.
 - Record non-trivial DSH integration decisions with the upstream commit and
   concrete source evidence.

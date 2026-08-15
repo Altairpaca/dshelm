@@ -1,6 +1,6 @@
-# Contributing to DeepHelm
+# Contributing to DSHelm
 
-DeepHelm is currently pre-alpha. Contributions are welcome, but the highest-value work right now is often architectural: clarifying policy semantics, validating DeepSeek Harness integration boundaries, and producing small end-to-end proofs rather than adding a large surface area.
+DSHelm is currently pre-alpha. Contributions are welcome, but the highest-value work right now is often architectural: clarifying policy semantics, validating DeepSeek Harness integration boundaries, composing ecosystem capabilities, and producing small end-to-end proofs rather than adding a large surface area.
 
 ## Before opening a large PR
 
@@ -12,12 +12,13 @@ Small documentation fixes, tests, typo corrections, and narrowly scoped implemen
 
 Contributions should generally follow these rules:
 
-- prefer public DSH extension surfaces over patches to DSH core;
+- prefer public DSH extension surfaces and mature ecosystem plugins over reimplementation;
 - keep policy resolution deterministic and inspectable;
 - avoid rebuilding runtime functionality that DSH or an ecosystem plugin already provides well;
 - make lossy compatibility/import behavior explicit;
 - keep provider/model-specific behavior outside the generic core when possible;
 - add tests for resolution precedence and configuration migration behavior;
+- never depend on external checkout paths in default tests (hermetic lane only);
 - do not copy third-party code unless its license permits the reuse and all attribution/notice requirements are satisfied.
 
 ## Development workflow
@@ -30,8 +31,12 @@ pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test
 pnpm build
-pnpm run qa:web -- --profile deephelm-v01 --url http://127.0.0.1:19876
+pnpm run qa:web-renderer -- --profile dshelm-v01 --url http://127.0.0.1:19876
 ```
+
+`qa:web-renderer` is the standalone renderer smoke only. Real DSH Web
+integration (fresh DSH profile + real bundle + native slot) is exercised by
+`qa:dsh-web`.
 
 For changes:
 
@@ -55,10 +60,10 @@ docs: define DSH adapter boundary
 A pull request should explain:
 
 - what changed;
-- why it belongs in DeepHelm rather than the underlying runtime;
+- why it belongs in DSHelm rather than the underlying runtime;
 - how it was validated;
 - whether it changes policy resolution or compatibility behavior.
 
 ## Licensing
 
-By contributing to DeepHelm, you agree that your contribution will be licensed under the repository's Apache License 2.0, consistent with Section 5 of that license unless you explicitly state otherwise.
+By contributing to DSHelm, you agree that your contribution will be licensed under the repository's Apache License 2.0, consistent with Section 5 of that license unless you explicitly state otherwise.
