@@ -177,13 +177,49 @@ export async function doctor(): Promise<number> {
   return failed ? 1 : 0
 }
 
+import { migrateOmo, parseOmoConfigFile, renderReport } from '@dshelm/compat-omo'
+
+/** dshelm migrate omo — read-only OmO config migration (dry-run by default). */
+async function migrateOmoCommand(args: string[]): Promise<number> {
+  const configIndex = args.indexOf('--config')
+  const configPath = configIndex >= 0 ? args[configIndex + 1] ?? '' : join(homedir(), '.omo', 'omo.jsonc')
+  const write = args.includes('--write')
+  const outIndex = args.indexOf('--out')
+  const outPath = outIndex >= 0 ? args[outIndex + 1] ?? '.dshelm/config.jsonc' : '.dshelm/config.jsonc'
+  if (!existsSync(configPath)) {
+    console.error(`migrate: OmO config not found at ${configPath} (pass --config <path>)`)
+    return 1
+  }
+  const doc = await parseOmoConfigFile(configPath)
+  const { policy, report } = migrateOmo(doc, configPath)
+  console.log(renderReport(report))
+  if (!write) {
+    console.log('\nDry run — nothing written. Re-run with --write to emit ' + outPath)
+    return 0
+  }
+  if (existsSync(outPath)) {
+    console.error(`migrate: refusing to overwrite existing ${outPath} (merge is a later increment)`)
+    return 1
+  }
+  const { mkdirSync, writeFileSync } = await import('node:fs')
+  mkdirSync(outPath.slice(0, outPath.lastIndexOf('/')), { recursive: true })
+  writeFileSync(outPath, JSON.stringify(policy, null, 2) + '\n')
+  console.log(`Wrote ${outPath} (${report.counts.SUPPORTED + report.counts.MAPPED} mapped entities)`)
+  return 0
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2]
+  const rest = process.argv.slice(3)
   if (command === 'doctor') {
     process.exitCode = await doctor()
     return
   }
-  console.log('DSHelm CLI\n\nUsage: dshelm doctor\n')
+  if (command === 'migrate' && rest[0] === 'omo') {
+    process.exitCode = await migrateOmoCommand(rest.slice(1))
+    return
+  }
+  console.log('DSHelm CLI\n\nUsage: dshelm doctor | dshelm migrate omo [--config <path>] [--write] [--out <path>]\n')
 }
 
 await main()

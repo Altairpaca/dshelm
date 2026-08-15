@@ -89,6 +89,8 @@ export interface CategorySpec {
   readonly id: string
   /** Agent id; must reference an existing agent. */
   readonly agent: string
+  /** Optional human-facing description (v0.2; shown by control-plane surfaces). */
+  readonly description?: string
 }
 
 /** The validated, plain-JSON policy document. */

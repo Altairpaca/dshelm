@@ -12,7 +12,9 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -29,7 +31,8 @@
     "@deepseek-ai/dsh-session-projection": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-subagent": "^0.1.0-rc.6",
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
-    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@dshelm/compat-omo": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.15.0"

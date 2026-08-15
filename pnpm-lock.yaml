@@ -56,12 +56,28 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(f8724372086ccc1457fc84e7becee2e0)
+      '@dshelm/compat-omo':
+        specifier: workspace:*
+        version: link:../compat-omo
       '@dshelm/core':
         specifier: workspace:*
         version: link:../core
       '@dshelm/dsh':
         specifier: workspace:*
         version: link:../dsh
+    devDependencies:
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.20.1
+
+  packages/compat-omo:
+    dependencies:
+      '@dshelm/core':
+        specifier: workspace:*
+        version: link:../core
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1
     devDependencies:
       '@types/node':
         specifier: ^22.15.0

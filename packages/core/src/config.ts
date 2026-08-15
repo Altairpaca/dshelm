@@ -151,7 +151,7 @@ const CANDIDATE_FIELDS = new Set(['provider', 'model', 'reasoning'])
 const AGENT_FIELDS = new Set(['id', 'role', 'profile', 'persona', 'maxDepth', 'tools', 'skills', 'verification'])
 const TOOL_FIELDS = new Set(['allow', 'deny'])
 const VERIFICATION_FIELDS = new Set(['required', 'maxIterations'])
-const CATEGORY_FIELDS = new Set(['id', 'agent'])
+const CATEGORY_FIELDS = new Set(['id', 'agent', 'description'])
 
 function fail(code: ConfigResolutionError['code'], message: string, path?: string, layer?: string): never {
   throw new ConfigResolutionError(code, message, {
@@ -266,6 +266,7 @@ function validateCategory(id: string, value: unknown, layer?: string): void {
     fail('ID_MISMATCH', `${path}.id ("${String(category.id)}") does not match its map key "${id}"`, `${path}.id`, layer)
   }
   assertNonEmptyString(category.agent, `${path}.agent`, layer)
+  if (category.description !== undefined) assertNonEmptyString(category.description, `${path}.description`, layer)
 }
 
 /** Validate the merged document: entities, references, plain-JSON, freeze. */
