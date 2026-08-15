@@ -13,7 +13,9 @@
     "test": "vitest run",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
     "bench": "tsx scripts/bench-resolver.ts",
-    "qa:dsh-host": "bash scripts/qa-dsh-host.sh"
+    "qa:dsh-host": "bash scripts/qa-dsh-host.sh",
+    "doctor": "pnpm --filter @dshelm/cli doctor",
+    "doctor:ts": "tsx packages/cli/src/index.ts doctor"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
