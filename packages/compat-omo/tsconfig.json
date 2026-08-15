@@ -1,22 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
-    "types": [
-      "node"
-    ],
     "rootDir": "src",
     "outDir": "dist",
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "src/**/*.ts"
   ],
   "exclude": [
-    "tests",
-    "src/client-rt"
+    "tests"
   ]
 }

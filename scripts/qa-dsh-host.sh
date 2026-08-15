@@ -48,6 +48,9 @@ dsh --profile dshelm-qa --dump-config | grep -A2 '# == @dshelm/dsh'
 echo "== client manifest present =="
 node -e "const m = require('./node_modules/@dshelm/dsh/package.json'); if (!m.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-runtime')) process.exit(1); console.log('dsh.client.inject:', m.dsh.client.inject.join(', '))"
 
+echo "== client bundle registers under __ModuleLoader__ with the package id =="
+node "$ROOT/scripts/verify-client-bundle.js" ./node_modules/@dshelm/dsh/lib/client.js
+
 echo "== plugin tree load (fail loud; web app is TTY-only, so a live boot is
 expected to run until the timeout) =="
 set +e

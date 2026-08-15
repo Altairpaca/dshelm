@@ -1,0 +1,40 @@
+{
+  "name": "@dshelm/cli",
+  "version": "0.2.0-alpha.0",
+  "description": "DSHelm CLI — doctor and distribution diagnostics for the DSHelm agent distribution.",
+  "type": "module",
+  "bin": {
+    "dshelm": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "doctor": "node ./dist/index.js doctor"
+  },
+  "dependencies": {
+    "@dshelm/core": "workspace:*",
+    "@dshelm/dsh": "workspace:*",
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-agent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-agent-loop": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-session-projection": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-subagent": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6",
+    "@dshelm/compat-omo": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
+  }
+}

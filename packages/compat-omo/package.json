@@ -1,0 +1,24 @@
+{
+  "name": "@dshelm/compat-omo",
+  "version": "0.2.0-alpha.0",
+  "description": "DSHelm OmO compatibility: read-only migration parser and mapper (behavioral port, no source copy).",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@dshelm/core": "workspace:*",
+    "jsonc-parser": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
+  }
+}

@@ -19,7 +19,7 @@ function expectCode(action: () => unknown, code: ConfigResolutionError['code']):
 const valid = {
   profiles: { p: { id: 'p', candidates: [{ provider: 'deepseek', model: 'deepseek-v4-flash' }] } },
   agents: { a: { id: 'a', role: 'worker', profile: 'p' } },
-  categories: { c: { id: 'c', agent: 'a' } },
+  categories: { c: { id: 'c', agent: 'a', description: 'small verifiable changes' } },
 }
 
 describe('runtime policy schema validation', () => {
@@ -79,6 +79,14 @@ describe('runtime policy schema validation', () => {
   it('rejects empty candidate lists', () => {
     expectCode(
       () => validatePolicy({ profiles: { p: { id: 'p', candidates: [] } } }),
+      'INVALID_POLICY',
+    )
+  })
+
+  it('accepts an optional category description and rejects malformed ones', () => {
+    expect(validatePolicy({ ...valid, categories: { c: { id: 'c', agent: 'a' } } })).toBeDefined()
+    expectCode(
+      () => validatePolicy({ ...valid, categories: { c: { id: 'c', agent: 'a', description: '' } } }),
       'INVALID_POLICY',
     )
   })
