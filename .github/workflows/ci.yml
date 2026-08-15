@@ -99,7 +99,9 @@ jobs:
           npm install --no-audit --no-fund /tmp/pack/dshelm-core-*.tgz /tmp/pack/dshelm-dsh-*.tgz >/dev/null
           node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
           node -e "import('@dshelm/dsh').then(m => { if (!m.DSHelmPolicyService) process.exit(1) })"
-          node -e "import('@dshelm/dsh/client').then(m => { if (!m.apply) process.exit(1) })"
+          # The client entry is a browser-only __ModuleLoader__ closure bundle
+          # (window is not defined in Node): verify bundle shape instead.
+          node -e "const fs=require('fs'); const b=fs.readFileSync('node_modules/@dshelm/dsh/lib/client.js','utf8'); if(!/__ModuleLoader__\.load\(\{\s*id:\s*"@dshelm\/dsh"/.test(b)) process.exit(1); console.log('client bundle OK')"
 
   # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a
   # default hermetic dependency.
