@@ -4,10 +4,12 @@
  * importing it in Node fails (window is not defined), so verify the artifact
  * structure instead. Usage: node scripts/verify-client-bundle.js [path]
  */
-const { readFileSync } = require('node:fs')
-const { resolve } = require('node:path')
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const path = process.argv[2] ?? resolve(__dirname, '../packages/dsh/lib/client.js')
+const here = dirname(fileURLToPath(import.meta.url))
+const path = process.argv[2] ?? resolve(here, '../packages/dsh/lib/client.js')
 const bundle = readFileSync(path, 'utf8')
 
 // __ModuleLoader__.load({ id: "@dshelm/dsh", ... }) — tolerant of whitespace.
