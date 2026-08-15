@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   PolicyResolutionError,
   resolvePolicy,
+  validatePolicy,
   type CandidateEvaluation,
   type PolicyDocument,
   type RuntimeCapabilities,
@@ -280,7 +281,21 @@ describe('resolvePolicy failures and candidate evaluation', () => {
     )
   })
 
-  it('records every candidate evaluation in order for the inspector', async () => {
+  it('rejects a hand-built policy whose entity map has a polluted prototype', async () => {
+    const valid = validatePolicy({
+      profiles: { p: { id: 'p', candidates: [{ provider: 'deepseek', model: 'm' }] } },
+      agents: { a: { id: 'a', role: 'r', profile: 'p' } },
+      categories: { c: { id: 'c', agent: 'a' } },
+    })
+    const hostile = { ...valid }
+    const hostileCategories = { ...valid.categories }
+    Object.setPrototypeOf(hostileCategories, { smuggled: true })
+    ;(hostile as { categories: unknown }).categories = hostileCategories
+    await expect(resolvePolicy(hostile as unknown as PolicyDocument, { providers: {} }, { category: 'c' }))
+      .rejects.toMatchObject({ code: 'INVALID_OVERRIDE' })
+  })
+
+it('records every candidate evaluation in order for the inspector', async () => {
     const candidates: CandidateEvaluation[] = []
     let resolved
     try {

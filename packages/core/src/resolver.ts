@@ -39,6 +39,12 @@ export async function resolvePolicy(
   runtime: RuntimeCapabilities,
   request: ResolveRequest,
 ): Promise<ResolvedAgentPolicy> {
+  // Resolver-input guard: the document and its entity maps must be plain
+  // objects (null or Object.prototype prototypes). A hand-built policy with a
+  // polluted prototype could otherwise smuggle inherited members into
+  // lookups; validated documents are already clean and frozen, so this is a
+  // cheap per-resolve assertion, not a re-validation.
+  assertPlainPolicy(policy)
   const category = policy.categories[request.category]
   if (category === undefined) {
     throw new PolicyResolutionError('UNKNOWN_CATEGORY', `Unknown category "${request.category}"`)
@@ -240,6 +246,22 @@ function aggregateError(trace: ResolutionTrace): PolicyResolutionError {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function assertPlainPolicy(policy: PolicyDocument): void {
+  for (const [label, map] of [
+    ['document', policy],
+    ['categories', policy.categories],
+    ['agents', policy.agents],
+    ['profiles', policy.profiles],
+  ] as const) {
+    const proto = Object.getPrototypeOf(map)
+    if (proto !== null && proto !== Object.prototype) {
+      throw new PolicyResolutionError(
+        'INVALID_OVERRIDE',
+        'Resolver input is not a plain policy ' + label + ': prototype pollution attempt',
+      )
+    }
+  }
+}
 function validateOverride(override: ResolveOverride | undefined): void {
   if (override === undefined) return
   if (Boolean(override.provider) !== Boolean(override.model)) {

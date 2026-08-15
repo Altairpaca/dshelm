@@ -174,6 +174,16 @@ describe('runtime policy schema validation', () => {
     expect(({} as Record<string, unknown>).polluted).toBeUndefined()
   })
 
+  it('rejects non-JSON values (functions, dates, undefined) as not plain data', () => {
+    const withFunction = { ...valid, agents: { a: { id: 'a', role: 'r', profile: 'p', persona: () => 'nope' } } }
+    expectCode(() => validatePolicy(withFunction), 'INVALID_POLICY')
+    const withDate = { ...valid, profiles: { p: { id: 'p', candidates: [{ provider: 'x', model: 'm' }], reasoning: new Date() } } }
+    // A Date's prototype is neither null nor Object.prototype — the prototype
+    // guard is the designated catcher for non-plain values.
+    expectCode(() => validatePolicy(withDate), 'PROTECTED_KEY')
+    const withUndefined = { ...valid, agents: { a: { id: 'a', role: 'r', profile: 'p', maxDepth: undefined } } }
+    expectCode(() => validatePolicy(withUndefined), 'INVALID_POLICY')
+  })
   it('merges nested entities field-wise across layers (object replace, not alias chasing)', () => {
     const policy = loadPolicyLayers({
       defaults: {
