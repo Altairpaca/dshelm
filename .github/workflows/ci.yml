@@ -2,8 +2,8 @@ name: ci
 
 on:
   push:
-    branches: [main, 'work/*']
   pull_request:
+  workflow_dispatch:
 
 jobs:
   core-unit:

@@ -37,6 +37,22 @@ What DSHelm gives you is a single place to define and inspect:
 It is an integrated distribution / agent layer: policy, configuration,
 routing, provenance, and user surfaces — on top of the DSH execution plane.
 
+## Where DSHelm sits in the ecosystem
+
+| Project | Role |
+|---|---|
+| DeepSeek Harness | runtime / kernel / plugin substrate |
+| AgentTeams | durable team execution (captain/members/mailbox/task DAG) |
+| Oh-My-DSH | community capability library and catalog |
+| Sisyphus presets | workflow/persona port of OmO's Sisyphus loop |
+| OmO | behavioral/product reference (not a DSH project) |
+| **DSHelm** | **verified integrated agent distribution for DSH** |
+
+DSHelm does not compete on raw feature count. Its job is composition,
+compatibility, verification, observability, migration, and opinionated
+defaults: install DSHelm and a bare DSH becomes a complete, configurable,
+observable, heterogeneous-model, multi-agent coding environment.
+
 ## Project status
 
 > [!WARNING]
@@ -74,7 +90,7 @@ What is **proven** (hermetic tests + typecheck + build + real boot):
   parallel workers → WorkerResults → structured reviewer verdict, with
   bounded revision and real roles × models snapshots.
 - **Distribution**: `pnpm pack` + fresh npm install of both tarballs (all
-  exports exist), fresh DSH_HOME profile composition (`qa:dsh-web`: dump
+  exports exist), fresh DSH_HOME profile composition (`qa:dsh-host`: dump
   config shows the `dshelm` bundle row; the profile boots past the loader
   with the real bundle).
 - CI lanes: core-unit, core-property, typecheck, build, dsh-contract,
@@ -86,7 +102,7 @@ What is **blocked / deferred** (recorded, not claimed):
   client runtime (`@deepseek-ai/dsh-client-runtime@0.0.1-rc.1`) depends on
   the unpublished `@deepseek-ai/dsh-compact`; no installable client stack
   exists for the rc.6 train. `qa:web-renderer` is the honest renderer
-  smoke; `qa:dsh-web` verifies host-side composition and loader load.
+  smoke; `qa:dsh-host` verifies host-side composition and loader load.
 - Credentialed E2E: no DeepSeek credential in this environment (external
   blocker; keyless acceptance does not depend on it).
 - npm `@dshelm` scope publish: requires registry credentials (checked as a
@@ -118,9 +134,13 @@ pnpm build
 
 - `qa:web-renderer` — standalone renderer smoke (DOM + responsive, fake
   snapshot). Proves nothing about DSH integration.
-- `qa:dsh-web` — real DSH Web QA: fresh DSH_HOME, scratch profile, real
-  `@dshelm/dsh` bundle, native slot registration, host→client projection,
-  reload/dispose.
+- `qa:web-renderer` — standalone renderer smoke (DOM + responsive, fake
+  snapshot). Proves nothing about DSH integration.
+- `qa:dsh-host` — real DSH host/profile lane: fresh DSH_HOME, scratch
+  profile, packed `@dshelm/dsh` bundle, `--dump-config` composition,
+  client manifest, loader boot (fail loud).
+- `qa:dsh-web` — reserved for future real-browser (Playwright) DSH Web
+  integration: slot rendering, `useProjection`, reload/dispose.
 
 ## Configuration
 
@@ -159,26 +179,45 @@ Example:
 
 ## Roadmap
 
-### v0.1-alpha — hardening (current)
+### v0.1 — Core + DSH integration baseline (in main)
 
 - [x] Runtime policy schema validation + prototype-pollution guard
 - [x] Opaque reasoning contract (no invented vocabulary)
-- [x] Per-candidate evaluation + aggregated traces
+- [x] Per-candidate evaluation + aggregated traces (inspector-ready)
 - [x] `inherits` removed with explicit error
 - [x] Real `dshelm.policy` Cordis host service (bundle-provided)
-- [x] `.dshelm/config.jsonc` precedence
-- [ ] Reasoning into real DSH request config (`request/header` proof)
-- [ ] Real DSH Web slot + `qa:dsh-web`
-- [ ] Real vertical slice (planner → workers → reviewer dataflow)
-- [ ] Hermetic CI + pack/install + fresh profile composition
+- [x] `.dshelm/config.jsonc` precedence (defaults → user → project → request)
+- [x] Reasoning into the real DSH request config — `request/header` and
+  adapter `GenerateOptions` == ResolutionTrace (keyless contract test)
+- [x] Real vertical slice dataflow (planner → workers → reviewer, bounded
+  revision) — keyless proof against a real agent loop
+- [x] Hermetic CI (core-unit, core-property, typecheck, build, dsh-contract,
+  pack-install) + pack/install + fresh DSH profile composition (`qa:dsh-host`)
+- [ ] Real DSH Web slot rendering (blocked: published client runtime depends
+  on unpublished `@deepseek-ai/dsh-compact`; renderer smoke is `qa:web-renderer`)
 
-### Later
+### v0.2 — Verified Distribution
 
-- [ ] Fallback, budget, concurrency policies with real backends
-- [ ] AgentTeams adapter/backend for team orchestration (policy → backend)
+- [ ] `dshelm doctor` (DSH/Cordis/DSHelm versions, installed capabilities,
+  provider/model/reasoning support, known blockers)
+- [ ] AgentTeams adapter (ExecutionBackend contract; policy → durable team
+  execution)
+- [ ] OmO migration alpha (`dshelm migrate omo`, dry-run, SUPPORTED/MAPPED/
+  LOSSY/UNSUPPORTED report)
+- [ ] Resolution Trace extended through the execution backend
+- [ ] Verified Stack: combinations of DSH native + AgentTeams + memory +
+  search/research + Sisyphus behavior, each labeled VERIFIED/PARTIAL/
+  EXPERIMENTAL/BROKEN with evidence
+
+### v0.3 — Integrated Web control plane
+
+- [ ] Teams/tasks/sessions/routing visible and steerable from the Web UI
+
+### v0.4 — Compatibility + presets + ecosystem distribution
+
 - [ ] Skills execution via DSH presets (currently metadata-only)
 - [ ] Conversation import (INDEX / ARCHIVE / CONTINUE)
-- [ ] `dshelm migrate omo` (behavioral migration, not source port)
+- [ ] Fallback/budget/concurrency policies with real backends
 
 ## Design principles
 

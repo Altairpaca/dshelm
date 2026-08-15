@@ -1,2 +1,5 @@
 packages:
   - packages/*
+# pnpm 11 settings live here (the package.json "pnpm" field is no longer read).
+onlyBuiltDependencies:
+  - esbuild

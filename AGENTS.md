@@ -45,8 +45,9 @@ experiences, never source.
 
 - Read `README.md` and `docs/ARCHITECTURE.md` before changing architecture.
 - Use public DSH/Cordis seams; never patch the DSH core checkout. The DSH
-  mux-flood hotfix in `patches/` is a development-environment workaround, not
-  a DSHelm runtime dependency.
+  rc.6 mux-flood and preset-mount-guard hotfixes live on the
+  `dev/dsh-rc6-hotfixes` branch (environment workarounds only, never a
+  DSHelm runtime dependency or product code).
 - Verify every DSH API against the pinned reference checkout currently used
   by this repository. Do not rely on remembered interfaces.
 - Keep `packages/core` independent of DSH. Keep `packages/dsh` thin.

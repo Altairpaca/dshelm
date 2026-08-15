@@ -12,8 +12,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
-    "qa:dsh-web": "bash scripts/qa-dsh-web.sh",
-    "bench": "tsx scripts/bench-resolver.ts"
+    "bench": "tsx scripts/bench-resolver.ts",
+    "qa:dsh-host": "bash scripts/qa-dsh-host.sh"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

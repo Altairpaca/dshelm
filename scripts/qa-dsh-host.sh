@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# qa:dsh-web — REAL DSH Web/profile composition lane (NOT the renderer smoke).
+# qa:dsh-host — REAL DSH host/profile composition lane (NOT the renderer smoke).
 #
 # Verifies with a fresh DSH_HOME + scratch profile + packed @dshelm/dsh bundle:
 #   1. profile tree composes the dshelm bundle row (--dump-config)
@@ -48,8 +48,22 @@ dsh --profile dshelm-qa --dump-config | grep -A2 '# == @dshelm/dsh'
 echo "== client manifest present =="
 node -e "const m = require('./node_modules/@dshelm/dsh/package.json'); if (!m.dsh?.client?.inject?.includes('@deepseek-ai/dsh-client-runtime')) process.exit(1); console.log('dsh.client.inject:', m.dsh.client.inject.join(', '))"
 
-echo "== plugin tree load (boot must pass the loader; web app is TTY-only) =="
-timeout 12 dsh --profile dshelm-qa >/dev/null 2>&1 || true
-echo 'boot: no loader error for entry dshelm'
+echo "== plugin tree load (fail loud; web app is TTY-only, so a live boot is
+expected to run until the timeout) =="
+set +e
+timeout 12 dsh --profile dshelm-qa >/tmp/dshelm-qa-boot.log 2>&1
+BOOT_EXIT=$?
+set -e
+if [ "$BOOT_EXIT" -eq 124 ]; then
+  echo 'boot: OK (app ran until timeout — plugin tree loaded, no loader error for entry dshelm)'
+elif [ "$BOOT_EXIT" -eq 0 ]; then
+  echo "FAIL: boot exited 0 unexpectedly (no app should exit cleanly without args)" >&2
+  cat /tmp/dshelm-qa-boot.log >&2
+  exit 1
+else
+  echo "FAIL: boot exited $BOOT_EXIT (loader/config error — see log)" >&2
+  cat /tmp/dshelm-qa-boot.log >&2
+  exit 1
+fi
 
-echo 'qa:dsh-web OK'
+echo 'qa:dsh-host OK'
