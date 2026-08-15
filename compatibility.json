@@ -1,0 +1,51 @@
+{
+  "project": "DSHelm",
+  "version": "0.1.0-alpha.1",
+  "tested": {
+    "dshCli": "0.1.0-rc.6",
+    "dshPackages": "0.1.0-rc.6",
+    "cordis": "4.0.1",
+    "node": ">=22.19.0",
+    "pnpm": "11.7.0",
+    "typescript": "6.0.3",
+    "zod": "4.4.3",
+    "dshReferenceCheckout": "47f943859bef60e4160492346772ded9b24f765a (rc.5, read-only reference)",
+    "verifiedDate": "2026-08-15"
+  },
+  "seams": {
+    "llm": [
+      "listProviders",
+      "resolveModelInfo",
+      "listModels (advisory)",
+      "prepareCall",
+      "resolveCallConfig"
+    ],
+    "agent": [
+      "AgentRegistry.create",
+      "installModelSelection"
+    ],
+    "subagent": [
+      "SubagentRuntime.registerProvider",
+      "SubagentStartRequest (persona/toolFilter/maxDepth)",
+      "startInProcessRun"
+    ],
+    "session": [
+      "SessionStore",
+      "SessionEventMap augmentation via '@deepseek-ai/dsh-session/types'",
+      "request/header"
+    ],
+    "projection": [
+      "SessionProjectionRegistry",
+      "ProjectionDefinition",
+      "SessionProjectionMap augmentation"
+    ],
+    "settings": [
+      "installSettingsSection(ctx, ns, schema, entry, hooks)",
+      "settingsNamespace"
+    ]
+  },
+  "notes": [
+    "dsh-client-runtime@0.0.1-rc.1 depends on unpublished @deepseek-ai/dsh-compact — client slot integration blocked on official publish",
+    "npm @dshelm scope availability must be checked before any publish"
+  ]
+}

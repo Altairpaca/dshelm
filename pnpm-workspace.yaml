@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+# pnpm 11 settings live here (the package.json "pnpm" field is no longer read).
+# pnpm 11's build-approval gate is the allowBuilds map (written by
+# `pnpm approve-builds`); the legacy onlyBuiltDependencies list is ignored.
+allowBuilds:
+  esbuild: false

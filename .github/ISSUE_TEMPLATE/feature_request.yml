@@ -21,7 +21,7 @@ body:
     id: dsh-boundary
     attributes:
       label: DSH integration boundary
-      description: Which DeepSeek Harness capability should DeepHelm configure or compose rather than reimplement?
+      description: Which DeepSeek Harness capability should DSHelm configure or compose rather than reimplement?
   - type: textarea
     id: alternatives
     attributes:
