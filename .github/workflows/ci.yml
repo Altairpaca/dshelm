@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 'work/*']
+  pull_request:
+
+jobs:
+  core-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts
+
+  core-property:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm vitest run packages/core/tests/core-property.test.ts
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  dsh-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # keyless real-execution + host composition + vertical slice (hermetic)
+      - run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
+
+  pack-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: |
+          mkdir -p /tmp/pack /tmp/fresh
+          pnpm --filter @dshelm/core pack --pack-destination /tmp/pack >/dev/null
+          pnpm --filter @dshelm/dsh pack --pack-destination /tmp/pack >/dev/null
+          cd /tmp/fresh
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund /tmp/pack/dshelm-core-*.tgz /tmp/pack/dshelm-dsh-*.tgz >/dev/null
+          node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
+          node -e "import('@dshelm/dsh').then(m => { if (!m.DSHelmPolicyService) process.exit(1) })"
+          node -e "import('@dshelm/dsh/client').then(m => { if (!m.apply) process.exit(1) })"
+
+  # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a
+  # default hermetic dependency.
+  dsh-upstream-source-contract:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo 'dsh-upstream-source-contract is informational; requires DSH_REFERENCE_DIR checkout'

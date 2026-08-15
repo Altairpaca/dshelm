@@ -11,7 +11,9 @@
     "build": "pnpm -r --if-present build",
     "typecheck": "tsc -b",
     "test": "vitest run",
-    "qa:web": "tsx scripts/qa-web.ts"
+    "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
+    "qa:dsh-web": "bash scripts/qa-dsh-web.sh",
+    "bench": "tsx scripts/bench-resolver.ts"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
