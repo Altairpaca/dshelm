@@ -17,6 +17,9 @@ import { loadProjectPolicyLayer, installDSHelmSettings, type DSHelmUserSettings 
 
 export const name = 'dshelm'
 
+/** Required services (Cordis fiber gate: the plugin starts when all exist). */
+export const inject = ['llm', 'sessions', 'subagents', 'sessionProjections']
+
 /** Plugin config: shipped defaults + optional static user layer. */
 export interface Config {
   /** Shipped default policy document (lowest precedence layer). */
