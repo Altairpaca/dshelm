@@ -43,34 +43,54 @@ routing, provenance, and user surfaces — on top of the DSH execution plane.
 > DSHelm is in **pre-alpha** (v0.1-alpha hardening in progress). There is no
 > stable configuration schema or public API yet.
 
-### Current bootstrap / implementation-in-progress
+### v0.1-alpha hardening status
 
-What is **proven** (hermetic tests + typecheck + build):
+What is **proven** (hermetic tests + typecheck + build + real boot):
 
 - `@dshelm/core`: runtime-validated policy documents (nested schema,
-  prototype-pollution guard, key/id consistency, reference validation,
-  non-empty candidates, unknown-field rejection, plain-JSON round-trip,
-  deep-freeze), deterministic resolver with per-candidate structured
-  evaluation, opaque reasoning strings, aggregated candidate traces,
-  canonical deterministic serialization, property/fuzz coverage.
-- `@dshelm/dsh`: real `dshelm.policy` Cordis host service
-  (resolve/explain/snapshot), DSH runtime capability adapter
-  (`resolveModelInfo`-based exact-model validation; `listModels` advisory
-  only), session-projection transport (`dshelm/control-plane` events),
-  subagent provider mapping onto official `SubagentStartRequest` seams,
-  model-selection composition onto official `installModelSelection`,
-  config precedence (`.dshelm/config.jsonc` project layer; settings user
-  layer; `.dshelm/local/` gitignored).
+  prototype-pollution guard on config AND resolver inputs, key/id
+  consistency, reference validation, non-empty candidates, unknown-field
+  rejection, non-JSON value rejection, plain-JSON round-trip, deep-freeze),
+  deterministic resolver with per-candidate structured evaluation,
+  aggregated candidate traces that carry the error, opaque reasoning
+  strings, canonical deterministic serialization, property/fuzz coverage,
+  performance baseline (`pnpm bench`).
+- `@dshelm/dsh`: real `dshelm.policy` Cordis host service provided by the
+  bundle itself (resolve/explain/snapshot; inject-declared; fiber
+  lifecycle; duplicate registration fails loud), DSH runtime capability
+  adapter (`resolveModelInfo`-based exact-model validation; `listModels`
+  advisory only; unlisted-but-valid models resolve), session-projection
+  transport (`dshelm/control-plane` events folded by a real
+  SessionProjectionRegistry), subagent provider mapping onto official
+  `SubagentStartRequest` seams, model-selection composition onto official
+  `installModelSelection`, config precedence (`.dshelm/config.jsonc`
+  project layer; settings user layer with official fallback;
+  `.dshelm/local/` gitignored).
+- **Keyless real-execution contract**: DSHelm ResolutionTrace == actual DSH
+  `request/header` == adapter `GenerateOptions` (provider/model/
+  reasoningEffort), proven through a real agent loop with a scripted
+  rc.6 adapter.
+- **Reference vertical slice**: goal → planner PlanArtifact → bounded
+  parallel workers → WorkerResults → structured reviewer verdict, with
+  bounded revision and real roles × models snapshots.
+- **Distribution**: `pnpm pack` + fresh npm install of both tarballs (all
+  exports exist), fresh DSH_HOME profile composition (`qa:dsh-web`: dump
+  config shows the `dshelm` bundle row; the profile boots past the loader
+  with the real bundle).
+- CI lanes: core-unit, core-property, typecheck, build, dsh-contract,
+  pack-install (+ informational upstream lane).
 
-What is **planned / in progress** (NOT yet claimed as verified):
+What is **blocked / deferred** (recorded, not claimed):
 
-- real DSH Web slot integration and `qa:dsh-web` (renderer smoke
-  `qa:web-renderer` is explicitly NOT a DSH integration proof);
-- keyless request/header == ResolutionTrace proof through a real agent loop;
-- planner → workers → reviewer slice with real data flow and bounded
-  revision;
-- pack + fresh-install + fresh DSH profile composition;
-- CI lanes and performance baselines.
+- Real DSH Web slot + `useProjection` client integration: the published
+  client runtime (`@deepseek-ai/dsh-client-runtime@0.0.1-rc.1`) depends on
+  the unpublished `@deepseek-ai/dsh-compact`; no installable client stack
+  exists for the rc.6 train. `qa:web-renderer` is the honest renderer
+  smoke; `qa:dsh-web` verifies host-side composition and loader load.
+- Credentialed E2E: no DeepSeek credential in this environment (external
+  blocker; keyless acceptance does not depend on it).
+- npm `@dshelm` scope publish: requires registry credentials (checked as a
+  pre-publish gate, not a v0.1-alpha acceptance blocker).
 
 The master acceptance checklist lives in
 `docs/decisions/v0.1-alpha-hardening.md`. Nothing in this README claims
