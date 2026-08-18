@@ -24,6 +24,7 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { type PolicyDocument } from '@dshelm/core'
 import { DSHelmPolicyService, dshelmControlPlaneProjection } from '@dshelm/dsh'
+import { authCommand, explainCommand, initCommand, knowledgeCommand, modelsCommand } from './command-handlers.ts'
 
 const require = createRequire(import.meta.url)
 
@@ -141,6 +142,8 @@ export async function doctor(): Promise<number> {
     status: dshCli.ok ? 'OK' : 'BLOCKED',
     detail: dshCli.ok ? dshCli.out : 'dsh CLI not on PATH (' + (dshCli.out.split('\n')[0] ?? '') + ')',
   })
+  const dshPackage = pkgVersion('@deepseek-ai/dsh-llm')
+  rows.push({ check: 'DSH package runtime', status: dshPackage === undefined ? 'BLOCKED' : 'OK', detail: dshPackage ?? 'not installed' })
   rows.push({ check: 'Cordis', status: pkgVersion('@deepseek-ai/cordis') === undefined ? 'BLOCKED' : 'OK', detail: pkgVersion('@deepseek-ai/cordis') ?? 'not installed' })
   rows.push({ check: 'DSHelm Core', status: pkgVersion('@dshelm/core') === undefined ? 'FAIL' : 'OK', detail: pkgVersion('@dshelm/core') ?? 'not installed' })
   rows.push({ check: 'DSHelm DSH adapter', status: pkgVersion('@dshelm/dsh') === undefined ? 'FAIL' : 'OK', detail: pkgVersion('@dshelm/dsh') ?? 'not installed' })
@@ -156,7 +159,7 @@ export async function doctor(): Promise<number> {
   rows.push({
     check: 'DSH Web client runtime',
     status: 'PARTIAL',
-    detail: 'client bundles require the DSH Web shell; rc.6 client runtime published (no dsh-compact dep) — see verified-stack.md',
+    detail: `client bundles require the DSH Web shell; ${dshPackage ?? 'DSH package'} client runtime published (no dsh-compact dep) — see verified-stack.md`,
   })
   rows.push({ check: 'Sisyphus presets', status: 'PARTIAL', detail: 'SUL-1.0 reference; detect/support, never copy (source-ledger.md)' })
   rows.push({ check: 'Oh-My-DSH', status: 'PARTIAL', detail: 'capability library, unlicensed → reference only (source-ledger.md)' })
@@ -219,7 +222,27 @@ async function main(): Promise<void> {
     process.exitCode = await migrateOmoCommand(rest.slice(1))
     return
   }
-  console.log('DSHelm CLI\n\nUsage: dshelm doctor | dshelm migrate omo [--config <path>] [--write] [--out <path>]\n')
+  if (command === 'auth') {
+    process.exitCode = await authCommand(rest)
+    return
+  }
+  if (command === 'models') {
+    process.exitCode = modelsCommand(rest)
+    return
+  }
+  if (command === 'explain') {
+    process.exitCode = await explainCommand(rest[0])
+    return
+  }
+  if (command === 'knowledge') {
+    process.exitCode = knowledgeCommand(rest)
+    return
+  }
+  if (command === 'init') {
+    process.exitCode = await initCommand(rest)
+    return
+  }
+  console.log('DSHelm CLI\n\nUsage: dshelm init [--yes] | dshelm auth <list|status|login|logout> [resource] | dshelm models <inspect|explain> [provider/model] | dshelm explain <provider>/<model> | dshelm knowledge status | dshelm doctor | dshelm migrate omo [--config <path>] [--write] [--out <path>]\n')
 }
 
 await main()

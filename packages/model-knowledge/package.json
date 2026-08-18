@@ -1,0 +1,20 @@
+{
+  "name": "@dshelm/model-knowledge",
+  "version": "0.3.0-alpha.0",
+  "description": "Evidence-backed model capability knowledge for DSHelm routing.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

@@ -149,4 +149,44 @@ describe('resolvePolicy', () => {
     expect(JSON.parse(JSON.stringify(first))).toEqual(first)
     expect(canonicalJson(first)).toBe(canonicalJson(second))
   })
+
+  it('selects by task requirements and records runtime evidence in trace v2', async () => {
+    const resolved = await resolvePolicy(policy, {
+      providers: {
+        deepseek: {
+          enabled: true,
+          resolveModel: (model) => model === 'deepseek-v4-pro'
+            ? {
+                valid: true,
+                authReady: false,
+                backend: 'dsh-native',
+                harness: 'dsh',
+                softScores: { cheapParallelism: 0.2 },
+                evidence: [{ source: 'runtime-fixture', layer: 'runtime', confidence: 1 }],
+                reasoningEfforts: ['high', 'max'],
+              }
+            : {
+                valid: true,
+                authReady: true,
+                backend: 'agent-teams',
+                harness: 'dsh',
+                softScores: { cheapParallelism: 0.95 },
+                evidence: [{ source: 'empirical-fixture', layer: 'empirical', confidence: 0.8 }],
+                reasoningEfforts: ['off', 'high', 'max'],
+              },
+        },
+      },
+    }, {
+      category: 'deep',
+      requirements: { needsCheapParallelism: true, authConstraint: 'authenticated' },
+    })
+
+    expect(resolved.model).toBe('deepseek-v4-flash')
+    expect(resolved.trace.version).toBe(2)
+    expect(resolved.trace.requirements).toEqual({ needsCheapParallelism: true, authConstraint: 'authenticated' })
+    expect(resolved.trace.candidates).toEqual([
+      expect.objectContaining({ outcome: 'auth-unavailable', authReady: false }),
+      expect.objectContaining({ outcome: 'selected', score: 0.95, backend: 'agent-teams', harness: 'dsh', evidence: [{ source: 'empirical-fixture', layer: 'empirical', confidence: 0.8 }] }),
+    ])
+  })
 })

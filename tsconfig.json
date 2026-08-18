@@ -24,6 +24,8 @@
   "files": [],
   "references": [
     { "path": "./packages/core" },
-    { "path": "./packages/dsh" }
+    { "path": "./packages/dsh" },
+    { "path": "./packages/auth" },
+    { "path": "./packages/model-knowledge" }
   ]
 }

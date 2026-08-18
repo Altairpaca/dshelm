@@ -22,7 +22,7 @@ import {
   type RuntimeCapabilities,
 } from '@dshelm/core'
 import { loadPolicyLayers, type PolicyLayers } from '@dshelm/core'
-import { createDshCapabilities, attachAdvisoryCatalog, type LlmLike } from './capabilities.ts'
+import { createDshCapabilities, attachAdvisoryCatalog, type DshKnowledgeLookup, type LlmLike } from './capabilities.ts'
 import type { ControlPlaneRoleRow, ControlPlaneSnapshot } from './session-events.ts'
 
 /** Public face of the host service. */
@@ -45,6 +45,7 @@ export interface DSHelmPolicyServiceOptions {
    *  time — never a stale cast). */
   readonly layers: () => PolicyLayers
   readonly llm: LlmLike
+  readonly knowledge?: DshKnowledgeLookup
   /** Publish channel for control-plane events; absent = snapshot-only. */
   readonly publish?: (sessionId: string, snapshot: ControlPlaneSnapshot) => void
 }
@@ -60,6 +61,7 @@ export class DSHelmPolicyService extends Service implements DSHelmPolicyServiceF
 
   private readonly layers: () => PolicyLayers
   private readonly llm: LlmLike
+  private readonly knowledge: DshKnowledgeLookup | undefined
   private readonly publish: ((sessionId: string, snapshot: ControlPlaneSnapshot) => void) | undefined
   private readonly records = new Map<string, SessionRecord>()
 
@@ -67,6 +69,7 @@ export class DSHelmPolicyService extends Service implements DSHelmPolicyServiceF
     super(ctx, 'dshelm.policy')
     this.layers = options.layers
     this.llm = options.llm
+    this.knowledge = options.knowledge
     this.publish = options.publish
   }
 
@@ -76,7 +79,7 @@ export class DSHelmPolicyService extends Service implements DSHelmPolicyServiceF
   }
 
   async resolve(request: ResolveRequest): Promise<ResolvedAgentPolicy> {
-    const capabilities = createDshCapabilities(this.llm)
+    const capabilities = createDshCapabilities(this.llm, this.knowledge)
     return resolvePolicy(this.policy(), capabilities, request)
   }
 
@@ -158,6 +161,6 @@ export class DSHelmPolicyService extends Service implements DSHelmPolicyServiceF
 
   /** Full capability snapshot including advisory catalog (inspector view). */
   async capabilitiesWithCatalog(): Promise<RuntimeCapabilities> {
-    return attachAdvisoryCatalog(createDshCapabilities(this.llm), this.llm)
+    return attachAdvisoryCatalog(createDshCapabilities(this.llm, this.knowledge), this.llm)
   }
 }

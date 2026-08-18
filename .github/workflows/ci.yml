@@ -77,6 +77,23 @@ jobs:
       # keyless real-execution + host composition + vertical slice (hermetic)
       - run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
 
+  v03-auth-knowledge-cli:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @dshelm/auth build && pnpm --filter @dshelm/model-knowledge build
+      - run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
+      - run: pnpm --filter @dshelm/cli typecheck
+      - run: pnpm --filter @dshelm/cli build
+
   pack-install:
     runs-on: ubuntu-latest
     steps:

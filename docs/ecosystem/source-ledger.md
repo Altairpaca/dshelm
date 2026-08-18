@@ -12,9 +12,9 @@
 | Field | Value |
 |---|---|
 | Repo | github.com/deepseek-ai/deepseek-harness |
-| Commit (reference) | `47f943859bef60e4160492346772ded9b24f765a` (master, rc.5 publish; installed CLI rc.6) |
+| Commit (reference) | `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca` (tag `dsh-v0.1.0-rc.7`; local research checkout remains at `47f943859bef60e4160492346772ded9b24f765a`) |
 | License | MIT (public repo, vendored Cordis per repo policy) |
-| Classification | DEPENDENCY (published `@deepseek-ai/dsh-*` rc.6 packages) + REFERENCE (pinned checkout for seam evidence) |
+| Classification | DEPENDENCY (published `@deepseek-ai/dsh-*` rc.7 packages; transitive rc.6 support packages remain npm-resolved) + REFERENCE (pinned checkout for seam evidence) |
 | Purpose | runtime/kernel/plugin substrate; official seams (llm, agent, subagent, session, projection, settings) |
 | Files used | none copied; API contracts quoted in master contracts |
 | Modification | none |
@@ -76,12 +76,20 @@
 
 ## 7. Published npm dependencies (DSHelm packages)
 
-All `@deepseek-ai/dsh-*` rc.6, `@deepseek-ai/cordis` 4.0.1, zod 4, jsonc-parser,
+All directly used `@deepseek-ai/dsh-*` rc.7, `@deepseek-ai/cordis` 4.0.1, zod 4, jsonc-parser,
 fast-check, vitest, tsx, playwright — per-package licenses are MIT (DSH
 family) / MIT (zod, fast-check, vitest, tsx, playwright) / MIT (jsonc-parser).
 See each package.json.
 
-## 8. Unresolved / watch items
+## 8. Auth and model evidence inputs
+
+| Source | Version / commit | License | Classification | Scope |
+|---|---|---|---|---|
+| github.com/earendil-works/pi | `v0.82.1` / `b4f293684bba718d59cc1157679bcf6157b3a7f5` | MIT | REFERENCE_ONLY | provider-owned OAuth, `CredentialStore`, `Models.login/checkAuth/logout`; no source copied |
+| DSHelm `@dshelm/auth` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | opaque credential refs and ownership-neutral auth adapters |
+| DSHelm `@dshelm/model-knowledge` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | Zod-validated runtime/official/community/empirical evidence bundle |
+
+## 9. Unresolved / watch items
 
 - oh-my-dsh (LaplaceYoung) license: re-check monthly; if a permissive
   license appears, reassess absorption candidates individually.

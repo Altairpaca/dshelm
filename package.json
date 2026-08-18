@@ -12,6 +12,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
+    "qa:deepseek-live": "tsx scripts/qa-deepseek-live.ts",
     "bench": "tsx scripts/bench-resolver.ts",
     "qa:dsh-host": "bash scripts/qa-dsh-host.sh",
     "doctor": "pnpm --filter @dshelm/cli doctor",
