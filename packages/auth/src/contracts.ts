@@ -52,7 +52,11 @@ export interface AuthProbeContext {
 
 export interface AuthInteraction {
   readonly notify: (event: { readonly type: 'info' | 'progress' | 'auth-url'; readonly message: string; readonly url?: string }) => void
-  readonly prompt?: (prompt: { readonly type: 'text' | 'secret' | 'device-code'; readonly message: string }) => Promise<string>
+  readonly prompt?: (prompt: {
+    readonly type: 'text' | 'secret' | 'device-code' | 'select'
+    readonly message: string
+    readonly options?: readonly { readonly id: string; readonly label: string; readonly description?: string }[]
+  }) => Promise<string>
 }
 
 export interface AuthStatusResult {

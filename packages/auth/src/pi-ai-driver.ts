@@ -27,8 +27,9 @@ export function createPiAiOAuthDriver(options: PiAiOAuthDriverOptions): LibraryO
       try {
         const credential = await options.models.login(options.providerId, 'oauth', {
           prompt: async (prompt) => interaction.prompt?.({
-            type: prompt.type === 'manual_code' ? 'device-code' : prompt.type === 'select' ? 'text' : prompt.type,
+            type: prompt.type === 'manual_code' ? 'device-code' : prompt.type,
             message: prompt.message,
+            ...(prompt.type === 'select' ? { options: prompt.options } : {}),
           }) ?? Promise.reject(new AuthContractError('unsupported-operation', 'pi-ai OAuth login prompt is unavailable')),
           notify: (event) => interaction.notify(toAuthEvent(event)),
         })

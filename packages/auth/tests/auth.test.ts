@@ -82,10 +82,12 @@ describe('provider-neutral auth registry', () => {
 
   it('maps pi-ai Models login/checkAuth/logout into the provider-neutral driver without returning credentials', async () => {
     const events: string[] = []
+    const prompts: unknown[] = []
     const models = {
       checkAuth: async () => ({ type: 'oauth' as const, source: 'fixture-store' }),
       login: async (_provider: string, _type: 'oauth', interaction: { notify: (event: unknown) => void; prompt: (prompt: unknown) => Promise<string> }) => {
         interaction.notify({ type: 'info', message: 'fixture login' })
+        await interaction.prompt({ type: 'select', message: 'choose account', options: [{ id: 'default', label: 'Default' }] })
         return { type: 'oauth' as const, refresh: 'never-return-this', access: 'access', expires: 1_800_000_000_000 }
       },
       logout: async () => undefined,
@@ -93,9 +95,11 @@ describe('provider-neutral auth registry', () => {
     const driver = createPiAiOAuthDriver({ models, providerId: 'anthropic' })
     const status = await driver.status()
     expect(status).toMatchObject({ status: 'authenticated', detail: 'pi-ai reports oauth credentials are configured' })
-    const login = await driver.login({ notify: (event) => events.push(event.message), prompt: async () => 'fixture' })
+    const login = await driver.login({ notify: (event) => events.push(event.message), prompt: async (prompt) => { prompts.push(prompt); return 'fixture' } })
     expect(login).toMatchObject({ status: 'authenticated' })
     expect(JSON.stringify(login)).not.toContain('never-return-this')
+    expect(JSON.stringify(prompts[0])).toContain('"type":"select"')
+    expect(JSON.stringify(prompts[0])).toContain('"id":"default"')
     await driver.logout()
     expect(events).toEqual(['fixture login'])
   })

@@ -157,6 +157,9 @@ export const terminalAuthInteraction: AuthInteraction = {
     const { createInterface } = await import('node:readline/promises')
     const readline = createInterface({ input: process.stdin, output: process.stdout })
     try {
+      if (prompt.type === 'select' && prompt.options !== undefined) {
+        console.log(prompt.options.map((option, index) => `${index + 1}. ${option.label}${option.description === undefined ? '' : ` — ${option.description}`}`).join('\n'))
+      }
       return await readline.question(`${prompt.message}: `)
     } finally {
       readline.close()
