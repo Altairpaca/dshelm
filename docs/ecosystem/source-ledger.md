@@ -85,7 +85,7 @@ See each package.json.
 
 | Source | Version / commit | License | Classification | Scope |
 |---|---|---|---|---|
-| github.com/earendil-works/pi | `v0.82.1` / `b4f293684bba718d59cc1157679bcf6157b3a7f5` | MIT | REFERENCE_ONLY | provider-owned OAuth, `CredentialStore`, `Models.login/checkAuth/logout`; no source copied |
+| github.com/earendil-works/pi | `v0.82.1` / `b4f293684bba718d59cc1157679bcf6157b3a7f5` | MIT | DEPENDENCY + REFERENCE | provider-owned OAuth, `CredentialStore`, `Models.login/checkAuth/logout`; DSHelm uses the published package, no source copied |
 | DSHelm `@dshelm/auth` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | opaque credential refs and ownership-neutral auth adapters |
 | DSHelm `@dshelm/model-knowledge` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | Zod-validated runtime/official/community/empirical evidence bundle |
 
@@ -95,3 +95,5 @@ See each package.json.
   license appears, reassess absorption candidates individually.
 - AgentTeams per-member effective-model verification: pending reproducible
   request/header test (see v0.2 contract §5.2).
+- OS keychain backend for DSHelm-managed pi-ai credentials: pending; current
+  bridge is the documented `0600` file fallback only.

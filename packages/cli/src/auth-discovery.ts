@@ -1,8 +1,13 @@
 import { execFileSync } from 'node:child_process'
+import { join } from 'node:path'
+import { builtinModels } from '@earendil-works/pi-ai/providers/all'
 import {
   AuthRegistry,
   EnvironmentApiKeyAuthAdapter,
+  FileCredentialStore,
+  LibraryOAuthAuthAdapter,
   NativeProductAuthAdapter,
+  createPiAiOAuthDriver,
   credentialRef,
   type AuthInteraction,
   type AuthMethod,
@@ -103,6 +108,27 @@ export function createDefaultAuthRegistry(): AuthRegistry {
       credential: credentialRef(`product/${resourceId}/default`),
     }))
   }
+  const piModels = builtinModels({ credentials: new FileCredentialStore(join(process.cwd(), '.dshelm', 'credentials.json')) })
+  for (const provider of piModels.getProviders()) {
+    if (provider.auth.oauth === undefined) continue
+    const resourceId = `pi-ai/${provider.id}`
+    registry.register(new LibraryOAuthAuthAdapter({
+      resourceId,
+      product: provider.name,
+      method: {
+        id: `${resourceId}/oauth`,
+        kind: 'library-oauth',
+        owner: 'provider',
+        interactive: true,
+        headless: false,
+        refreshOwner: 'provider',
+        credentialStoreOwner: 'dshelm',
+        supportsMultiAccount: false,
+      },
+      credential: credentialRef(`pi-ai/${provider.id}/default`),
+      driver: createPiAiOAuthDriver({ models: piModels, providerId: provider.id }),
+    }))
+  }
   return registry
 }
 
@@ -126,6 +152,15 @@ export const terminalAuthInteraction: AuthInteraction = {
   notify: (event) => {
     if (event.type === 'auth-url' && event.url !== undefined) console.log(`${event.message}: ${event.url}`)
     else console.log(event.message)
+  },
+  prompt: async (prompt) => {
+    const { createInterface } = await import('node:readline/promises')
+    const readline = createInterface({ input: process.stdin, output: process.stdout })
+    try {
+      return await readline.question(`${prompt.message}: `)
+    } finally {
+      readline.close()
+    }
   },
 }
 

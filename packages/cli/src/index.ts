@@ -24,7 +24,7 @@ import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { type PolicyDocument } from '@dshelm/core'
 import { DSHelmPolicyService, dshelmControlPlaneProjection } from '@dshelm/dsh'
-import { authCommand, explainCommand, initCommand, knowledgeCommand, modelsCommand } from './command-handlers.ts'
+import { authCommand, explainCommand, initCommand, knowledgeCommand, modelsCommand, uninstallCommand } from './command-handlers.ts'
 
 const require = createRequire(import.meta.url)
 
@@ -242,7 +242,11 @@ async function main(): Promise<void> {
     process.exitCode = await initCommand(rest)
     return
   }
-  console.log('DSHelm CLI\n\nUsage: dshelm init [--yes] | dshelm auth <list|status|login|logout> [resource] | dshelm models <inspect|explain> [provider/model] | dshelm explain <provider>/<model> | dshelm knowledge status | dshelm doctor | dshelm migrate omo [--config <path>] [--write] [--out <path>]\n')
+  if (command === 'uninstall') {
+    process.exitCode = await uninstallCommand(rest)
+    return
+  }
+  console.log('DSHelm CLI\n\nUsage: dshelm init [--yes] | dshelm uninstall --yes [--purge-credentials] | dshelm auth <list|status|login|logout> [resource] | dshelm models <inspect|explain> [provider/model] | dshelm explain <provider>/<model> | dshelm knowledge status | dshelm doctor | dshelm migrate omo [--config <path>] [--write] [--out <path>]\n')
 }
 
 await main()

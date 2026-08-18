@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { unlink } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { z } from 'zod'
 import type { AuthProbeContext, AuthRegistry, AuthStatusResult } from '@dshelm/auth'
@@ -133,6 +134,23 @@ export async function initProfile(registry: AuthRegistry, probeContext: AuthProb
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(profile, null, 2)}\n`, { mode: 0o600, flag: 'wx' })
   return { profile, path, written: true }
+}
+
+export async function uninstallProfile(context: { readonly cwd: string; readonly purgeCredentials: boolean }): Promise<{ readonly removedProfile: boolean; readonly removedCredentials: boolean }> {
+  const directory = join(context.cwd, '.dshelm')
+  const removedProfile = await removeFile(join(directory, 'profile.json'))
+  const removedCredentials = context.purgeCredentials ? await removeFile(join(directory, 'credentials.json')) : false
+  return { removedProfile, removedCredentials }
+}
+
+async function removeFile(path: string): Promise<boolean> {
+  try {
+    await unlink(path)
+    return true
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return false
+    throw error
+  }
 }
 
 export const baselineKnowledge = BASELINE_KNOWLEDGE_BUNDLE

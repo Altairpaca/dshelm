@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { AuthRegistry, EnvironmentApiKeyAuthAdapter, credentialRef } from '@dshelm/auth'
-import { defaultAuthProbeContext } from '../src/auth-discovery.ts'
-import { authLines, knowledgeStatusLines, modelExplainLines, modelInspectLines } from '../src/user-commands.ts'
+import { createDefaultAuthRegistry, defaultAuthProbeContext } from '../src/auth-discovery.ts'
+import { authLines, knowledgeStatusLines, modelExplainLines, modelInspectLines, uninstallProfile } from '../src/user-commands.ts'
 import { BASELINE_KNOWLEDGE_BUNDLE } from '@dshelm/model-knowledge'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 describe('DSHelm user command projections', () => {
   it('renders model inventory and evidence-backed explanation', () => {
@@ -25,6 +29,23 @@ describe('DSHelm user command projections', () => {
     }))
     const statuses = await registry.status({ ...defaultAuthProbeContext(), env: () => 'secret-never-rendered' })
     expect(authLines(statuses)[0]).not.toContain('secret-never-rendered')
+  })
+
+  it('discovers pi-ai provider-owned OAuth resources without importing product credential files', () => {
+    const resources = createDefaultAuthRegistry().list().map((adapter) => adapter.resourceId)
+    expect(resources).toContain('pi-ai/anthropic')
+    expect(resources).toContain('pi-ai/openai-codex')
+  })
+
+  it('uninstalls the generated profile while preserving credentials unless purge is explicit', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dshelm-uninstall-'))
+    const directory = join(cwd, '.dshelm')
+    await mkdir(directory)
+    await writeFile(join(directory, 'profile.json'), '{}')
+    await writeFile(join(directory, 'credentials.json'), '{"version":1,"credentials":{}}')
+    expect(await uninstallProfile({ cwd, purgeCredentials: false })).toMatchObject({ removedProfile: true, removedCredentials: false })
+    await readFile(join(directory, 'credentials.json'), 'utf8')
+    expect(await uninstallProfile({ cwd, purgeCredentials: true })).toMatchObject({ removedCredentials: true })
   })
 
   it('reports knowledge staleness as a machine-readable status line', () => {

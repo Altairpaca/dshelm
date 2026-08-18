@@ -10,6 +10,7 @@
 | DSHelm Core policy kernel | VERIFIED | rc.7 | @dshelm/core 0.1.0 | 51 core tests incl. property/fuzz, determinism, perf baseline | v0.1 scope (no inheritance, skills metadata-only) |
 | DSHelm host service (dshelm.policy) | VERIFIED | rc.7 | @dshelm/dsh 0.1.0-alpha.1 | host-composition tests + real profile boot (qa:dsh-host) | — |
 | Keyless real execution (request/header == trace) | VERIFIED | rc.7 | @dshelm/dsh | dsh-request-contract.test.ts | scripted adapter only; credentialed E2E pending key |
+| pi-ai provider-owned OAuth bridge | VERIFIED | pi-ai 0.82.1 / DSH rc.7 seam | @dshelm/auth + @dshelm/cli | auth fixture tests + temporary HOME `auth status` | DSHelm-managed `0600` file fallback; OS keychain backend pending; real browser login opt-in |
 | Vertical slice (planner→workers→reviewer) | VERIFIED | rc.7 | @dshelm/dsh | vertical-slice.test.ts | scripted adapter; bounded revision proven |
 | Host→client projection transport | VERIFIED | rc.7 | @dshelm/dsh + dsh-session-projection | host-composition projection fold test | browser rendering pending client build |
 | DSH Web client runtime (package availability) | VERIFIED | rc.7 | @deepseek-ai/dsh-client-runtime 0.1.0-rc.7 | npm install + export check (/tmp/dshelm-client-check) | runtime is browser-only (window required) |

@@ -1,6 +1,6 @@
 import { AuthContractError, type AuthProbeContext, type AuthRegistry } from '@dshelm/auth'
 import { createDefaultAuthRegistry, defaultAuthProbeContext, formatAuthStatus, terminalAuthInteraction } from './auth-discovery.ts'
-import { authLines, baselineKnowledge, initProfile, knowledgeStatusLines, modelExplainLines, modelInspectLines } from './user-commands.ts'
+import { authLines, baselineKnowledge, initProfile, knowledgeStatusLines, modelExplainLines, modelInspectLines, uninstallProfile } from './user-commands.ts'
 
 const providerResources = {
   deepseek: 'deepseek-api',
@@ -108,6 +108,16 @@ export async function initCommand(args: readonly string[]): Promise<number> {
   console.log(`Authenticated resources: ${result.profile.topology.authenticatedResources.join(', ') || 'none'}`)
   console.log(`Execution strategy: ${result.profile.topology.strategy}`)
   if (!args.includes('--yes')) console.log('No login was started. Use `dshelm auth login <resource>` for explicit interactive login.')
+  return 0
+}
+
+export async function uninstallCommand(args: readonly string[]): Promise<number> {
+  if (!args.includes('--yes')) {
+    console.error('uninstall requires --yes; credentials are preserved unless --purge-credentials is also set')
+    return 1
+  }
+  const result = await uninstallProfile({ cwd: process.cwd(), purgeCredentials: args.includes('--purge-credentials') })
+  console.log(`DSHelm uninstall\n\nprofile=${result.removedProfile ? 'removed' : 'absent'} credentials=${result.removedCredentials ? 'purged' : 'preserved'}`)
   return 0
 }
 

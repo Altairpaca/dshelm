@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest'
 import {
   AuthRegistry,
   EnvironmentApiKeyAuthAdapter,
+  FileCredentialStore,
   LibraryOAuthAuthAdapter,
   NativeProductAuthAdapter,
+  createPiAiOAuthDriver,
   credentialRef,
   type AuthInteraction,
   type CommandResult,
   type ProductCommandRunner,
 } from '../src/index.ts'
+import { mkdtemp, readFile, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createModels } from '@earendil-works/pi-ai'
 
 const context = {
   now: () => 1_700_000_000_000,
@@ -34,6 +40,66 @@ function runnerFor(results: readonly CommandResult[]): ProductCommandRunner {
 }
 
 describe('provider-neutral auth registry', () => {
+  it('persists pi-ai credentials through a private 0600 file without exposing token material to status', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dshelm-auth-'))
+    const path = join(directory, 'credentials.json')
+    const store = new FileCredentialStore(path)
+    const secret = 'oauth-refresh-token-fixture'
+    await store.modify('anthropic', async () => ({ type: 'oauth', refresh: secret, access: 'access-fixture', expires: 1_800_000_000_000 }))
+
+    const reopened = new FileCredentialStore(path)
+    expect(await reopened.list()).toEqual([{ providerId: 'anthropic', type: 'oauth' }])
+    expect(await reopened.read('anthropic')).toMatchObject({ type: 'oauth', refresh: secret })
+    const models = createModels({ credentials: reopened })
+    expect(await models.checkAuth('anthropic')).toBeUndefined()
+    expect((await stat(path)).mode & 0o777).toBe(0o600)
+    expect(JSON.stringify(await reopened.list())).not.toContain(secret)
+    expect(await readFile(path, 'utf8')).toContain(secret)
+
+    const sequence: string[] = []
+    let release: (() => void) | undefined
+    let signalStarted: (() => void) | undefined
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const firstStarted = new Promise<void>((resolve) => { signalStarted = resolve })
+    const first = reopened.modify('anthropic', async () => {
+      sequence.push('first-start')
+      signalStarted?.()
+      await gate
+      sequence.push('first-end')
+      return { type: 'oauth', refresh: 'first', access: 'access', expires: 1_800_000_000_000 }
+    })
+    const second = reopened.modify('anthropic', async (current) => {
+      sequence.push(current?.type === 'oauth' && current.refresh === 'first' ? 'second-after-first' : 'second-before-first')
+      return { type: 'oauth', refresh: 'second', access: 'access', expires: 1_800_000_000_000 }
+    })
+    await firstStarted
+    expect(sequence).toEqual(['first-start'])
+    if (release === undefined) throw new Error('fixture release was not initialized')
+    release()
+    await Promise.all([first, second])
+    expect(sequence).toEqual(['first-start', 'first-end', 'second-after-first'])
+  })
+
+  it('maps pi-ai Models login/checkAuth/logout into the provider-neutral driver without returning credentials', async () => {
+    const events: string[] = []
+    const models = {
+      checkAuth: async () => ({ type: 'oauth' as const, source: 'fixture-store' }),
+      login: async (_provider: string, _type: 'oauth', interaction: { notify: (event: unknown) => void; prompt: (prompt: unknown) => Promise<string> }) => {
+        interaction.notify({ type: 'info', message: 'fixture login' })
+        return { type: 'oauth' as const, refresh: 'never-return-this', access: 'access', expires: 1_800_000_000_000 }
+      },
+      logout: async () => undefined,
+    }
+    const driver = createPiAiOAuthDriver({ models, providerId: 'anthropic' })
+    const status = await driver.status()
+    expect(status).toMatchObject({ status: 'authenticated', detail: 'pi-ai reports oauth credentials are configured' })
+    const login = await driver.login({ notify: (event) => events.push(event.message), prompt: async () => 'fixture' })
+    expect(login).toMatchObject({ status: 'authenticated' })
+    expect(JSON.stringify(login)).not.toContain('never-return-this')
+    await driver.logout()
+    expect(events).toEqual(['fixture login'])
+  })
+
   it('reports native product auth without returning command output or secrets', async () => {
     const runner = runnerFor([
       { exitCode: 0, stdout: 'codex 1.0.0', stderr: '' },
