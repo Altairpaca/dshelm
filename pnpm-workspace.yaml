@@ -5,6 +5,8 @@ packages:
 # `pnpm approve-builds`); the legacy onlyBuiltDependencies list is ignored.
 allowBuilds:
   esbuild: false
+  '@google/genai': true
+  protobufjs: true
 minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-agent-default-model@0.1.0-rc.7'
   - '@deepseek-ai/dsh-agent-loop@0.1.0-rc.7'
