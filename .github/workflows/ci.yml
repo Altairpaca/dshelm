@@ -91,8 +91,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @dshelm/auth build && pnpm --filter @dshelm/model-knowledge build
       - run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
-      - run: pnpm --filter @dshelm/cli typecheck
-      - run: pnpm --filter @dshelm/cli build
+      - run: pnpm --filter dshelm typecheck
+      - run: pnpm --filter dshelm build
 
   pack-install:
     runs-on: ubuntu-latest
@@ -111,11 +111,26 @@ jobs:
           mkdir -p /tmp/pack /tmp/fresh
           pnpm --filter @dshelm/core pack --pack-destination /tmp/pack >/dev/null
           pnpm --filter @dshelm/dsh pack --pack-destination /tmp/pack >/dev/null
+          pnpm --filter @dshelm/auth pack --pack-destination /tmp/pack >/dev/null
+          pnpm --filter @dshelm/model-knowledge pack --pack-destination /tmp/pack >/dev/null
+          pnpm --filter @dshelm/compat-omo pack --pack-destination /tmp/pack >/dev/null
+          pnpm --filter dshelm pack --pack-destination /tmp/pack >/dev/null
           cd /tmp/fresh
           npm init -y >/dev/null
-          npm install --no-audit --no-fund /tmp/pack/dshelm-core-*.tgz /tmp/pack/dshelm-dsh-*.tgz >/dev/null
+          npm install --no-audit --no-fund /tmp/pack/dshelm-core-*.tgz /tmp/pack/dshelm-dsh-*.tgz /tmp/pack/dshelm-auth-*.tgz /tmp/pack/dshelm-model-knowledge-*.tgz /tmp/pack/dshelm-compat-omo-*.tgz /tmp/pack/dshelm-0.3.0-alpha.0.tgz >/dev/null
           node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
           node -e "import('@dshelm/dsh').then(m => { if (!m.DSHelmPolicyService) process.exit(1) })"
+          node -e "if (!require.resolve('dshelm').endsWith('/dist/index.js')) process.exit(1)"
+          mkdir -p /tmp/fresh-journey && cd /tmp/fresh-journey
+          export HOME=/tmp/fresh-home
+          export DSHELM_CONFIG_DIR=/tmp/fresh-home/.config/dshelm
+          node /tmp/fresh/node_modules/dshelm/dist/index.js init --yes
+          test -f .dshelm/profile.json
+          test -f .dshelm/dsh-profile/package.json
+          node /tmp/fresh/node_modules/dshelm/dist/index.js auth status >/tmp/dshelm-auth-status.txt
+          node /tmp/fresh/node_modules/dshelm/dist/index.js explain deepseek/deepseek-v4-flash >/tmp/dshelm-explain.txt
+          node /tmp/fresh/node_modules/dshelm/dist/index.js uninstall --yes
+          test ! -e .dshelm/profile.json
           node "$GITHUB_WORKSPACE/scripts/verify-client-bundle.js"
 
   # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a

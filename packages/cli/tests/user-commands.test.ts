@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { AuthRegistry, EnvironmentApiKeyAuthAdapter, credentialRef } from '@dshelm/auth'
 import { createDefaultAuthRegistry, defaultAuthProbeContext } from '../src/auth-discovery.ts'
-import { authLines, knowledgeStatusLines, modelExplainLines, modelInspectLines, uninstallProfile } from '../src/user-commands.ts'
+import { authLines, initProfile, knowledgeStatusLines, modelExplainLines, modelInspectLines, uninstallProfile } from '../src/user-commands.ts'
 import { BASELINE_KNOWLEDGE_BUNDLE } from '@dshelm/model-knowledge'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { mkdtemp } from 'node:fs/promises'
@@ -46,6 +46,16 @@ describe('DSHelm user command projections', () => {
     expect(await uninstallProfile({ cwd, purgeCredentials: false })).toMatchObject({ removedProfile: true, removedCredentials: false })
     await readFile(join(directory, 'credentials.json'), 'utf8')
     expect(await uninstallProfile({ cwd, purgeCredentials: true })).toMatchObject({ removedCredentials: true })
+  })
+
+  it('generates a DSH profile manifest without creating project credentials', async () => {
+    const cwd = await mkdtemp(join(tmpdir(), 'dshelm-init-'))
+    const result = await initProfile(new AuthRegistry(), { ...defaultAuthProbeContext(), commandExists: async () => false }, { cwd, now: () => new Date('2026-08-18T00:00:00.000Z') })
+    expect(result.written).toBe(true)
+    expect(result.profile.dshProfile.bundles).toEqual(['@deepseek-ai/dsh-base', '@dshelm/dsh'])
+    expect(result.path).toBe(join(cwd, '.dshelm', 'profile.json'))
+    await expect(readFile(join(cwd, '.dshelm', 'credentials.json'), 'utf8')).rejects.toThrow()
+    expect(JSON.parse(await readFile(join(cwd, '.dshelm', 'dsh-profile', 'package.json'), 'utf8'))).toMatchObject({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] } } })
   })
 
   it('reports knowledge staleness as a machine-readable status line', () => {

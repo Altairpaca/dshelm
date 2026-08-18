@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { unlink } from 'node:fs/promises'
+import { rm, unlink } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { z } from 'zod'
+import { defaultCredentialStorePath } from '@dshelm/auth'
 import type { AuthProbeContext, AuthRegistry, AuthStatusResult } from '@dshelm/auth'
 import { formatAuthStatus } from './auth-discovery.ts'
 import { BASELINE_KNOWLEDGE_BUNDLE, explainModel, knowledgeStatus, type EvidenceLayer, type KnowledgeBundle } from '@dshelm/model-knowledge'
@@ -11,6 +12,7 @@ export type InitProfile = {
   readonly schemaVersion: 1
   readonly generatedAt: string
   readonly dsh: { readonly available: boolean; readonly version: string | null }
+  readonly dshProfile: { readonly path: string; readonly bundles: readonly string[] }
   readonly auth: readonly {
     readonly resourceId: string
     readonly product: string
@@ -40,6 +42,7 @@ const initProfileSchema = z.object({
   schemaVersion: z.literal(1),
   generatedAt: z.string(),
   dsh: z.object({ available: z.boolean(), version: z.string().nullable() }),
+  dshProfile: z.object({ path: z.string(), bundles: z.array(z.string()) }),
   auth: z.array(z.object({
     resourceId: z.string(),
     product: z.string(),
@@ -128,18 +131,25 @@ export async function initProfile(registry: AuthRegistry, probeContext: AuthProb
     schemaVersion: 1,
     generatedAt: context.now().toISOString(),
     dsh: probeDsh(),
+    dshProfile: { path: join(context.cwd, '.dshelm', 'dsh-profile'), bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] },
     auth: statuses.map(({ resourceId, product, methodId, status, authOwner, detail }) => ({ resourceId, product, methodId, status, authOwner, detail })),
     topology: makeTopology(statuses),
   }
   mkdirSync(dirname(path), { recursive: true })
   writeFileSync(path, `${JSON.stringify(profile, null, 2)}\n`, { mode: 0o600, flag: 'wx' })
+  mkdirSync(profile.dshProfile.path, { recursive: true, mode: 0o700 })
+  writeFileSync(join(profile.dshProfile.path, 'package.json'), `${JSON.stringify({ name: 'dshelm-profile', private: true, dependencies: { '@dshelm/dsh': '0.3.0-alpha.0' }, dsh: { profile: { bundles: profile.dshProfile.bundles } } }, null, 2)}\n`, { mode: 0o600, flag: 'wx' })
   return { profile, path, written: true }
 }
 
 export async function uninstallProfile(context: { readonly cwd: string; readonly purgeCredentials: boolean }): Promise<{ readonly removedProfile: boolean; readonly removedCredentials: boolean }> {
   const directory = join(context.cwd, '.dshelm')
   const removedProfile = await removeFile(join(directory, 'profile.json'))
-  const removedCredentials = context.purgeCredentials ? await removeFile(join(directory, 'credentials.json')) : false
+  await rm(join(directory, 'dsh-profile'), { recursive: true, force: true })
+  const legacyPath = join(directory, 'credentials.json')
+  const removedCredentials = context.purgeCredentials
+    ? (await removeFile(defaultCredentialStorePath()) || await removeFile(legacyPath))
+    : false
   return { removedProfile, removedCredentials }
 }
 

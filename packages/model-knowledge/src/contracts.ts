@@ -96,7 +96,41 @@ const modelRecord = z.object({
   soft: z.array(softCapability),
   adaptationHints: z.array(adaptationHint),
   evidence: z.array(evidenceItem).min(1),
-}).strict()
+}).strict().superRefine((record, context) => {
+  const evidenceClaims = new Set(record.evidence.map((item) => item.claimType))
+  const hardClaims: readonly [keyof z.infer<typeof hardCapabilities>, CapabilityKind][] = [
+    ['runtimeReady', 'runtimeReady'],
+    ['protocol', 'protocol'],
+    ['contextWindow', 'contextWindow'],
+    ['maxOutputTokens', 'maxOutputTokens'],
+    ['reasoningEfforts', 'reasoningEfforts'],
+    ['toolCalling', 'toolCalling'],
+    ['structuredOutput', 'structuredOutput'],
+    ['vision', 'vision'],
+    ['streaming', 'streaming'],
+    ['promptCaching', 'promptCaching'],
+    ['localDeployment', 'localDeployment'],
+    ['openWeights', 'openWeights'],
+    ['license', 'license'],
+    ['authMethods', 'authMethods'],
+  ]
+  for (const [field, claim] of hardClaims) {
+    if (record.hard[field] !== undefined && !evidenceClaims.has(claim)) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['hard', field], message: `missing evidence for ${field}` })
+    }
+  }
+  const evidenceIds = new Set(record.evidence.map((item) => item.id))
+  for (const [index, capability] of record.soft.entries()) {
+    for (const evidenceId of capability.evidenceIds) {
+      if (!evidenceIds.has(evidenceId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['soft', index, 'evidenceIds'], message: `unknown evidence id ${evidenceId}` })
+    }
+  }
+  for (const [index, hint] of record.adaptationHints.entries()) {
+    for (const evidenceId of hint.evidenceIds) {
+      if (!evidenceIds.has(evidenceId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['adaptationHints', index, 'evidenceIds'], message: `unknown evidence id ${evidenceId}` })
+    }
+  }
+})
 
 export const KnowledgeBundleSchema = z.object({
   schemaVersion: z.literal(1),

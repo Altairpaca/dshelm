@@ -66,7 +66,7 @@ export class NativeProductAuthAdapter implements AuthAdapter {
   }
 
   async probe(_context: AuthProbeContext): Promise<readonly AuthStatusResult[]> {
-    const outcome = await runCommand(this.options.runner, this.options.probe)
+    const outcome = await runCommand(this.options.runner, this.options.descriptor.probe)
     return [statusResult(
       this.resourceId,
       this.product,
@@ -81,7 +81,18 @@ export class NativeProductAuthAdapter implements AuthAdapter {
     const probe = await this.probe(context)
     const probeStatus = probe[0]
     if (probeStatus?.status === 'unknown') return probe
-    const outcome = await runCommand(this.options.runner, this.options.status)
+    const statusSpec = this.options.descriptor.status
+    if (statusSpec === undefined) {
+      return [statusResult(
+        this.resourceId,
+        this.product,
+        this.options.method,
+        'unknown',
+        'product exposes no verified non-interactive auth status surface',
+        this.options.credential,
+      )]
+    }
+    const outcome = await runCommand(this.options.runner, statusSpec)
     const status: AuthStatus = outcome.failed
       ? 'unknown'
       : outcome.result?.exitCode === 0 ? 'authenticated' : 'action-required'
@@ -98,7 +109,7 @@ export class NativeProductAuthAdapter implements AuthAdapter {
   async login(methodId: string, _interaction: AuthInteraction, _context: AuthProbeContext): Promise<AuthStatusResult> {
     const method = requireMethod(this.methods, methodId)
     if (!method.interactive) throw new AuthContractError('unsupported-operation', `Auth method "${methodId}" is not interactive`)
-    const outcome = await runCommand(this.options.runner, this.options.login)
+    const outcome = await runCommand(this.options.runner, this.options.descriptor.login)
     return statusResult(
       this.resourceId,
       this.product,
@@ -111,7 +122,7 @@ export class NativeProductAuthAdapter implements AuthAdapter {
 
   async logout(methodId: string, _context: AuthProbeContext): Promise<AuthStatusResult> {
     const method = requireMethod(this.methods, methodId)
-    const outcome = await runCommand(this.options.runner, this.options.logout)
+    const outcome = await runCommand(this.options.runner, this.options.descriptor.logout)
     return statusResult(
       this.resourceId,
       this.product,

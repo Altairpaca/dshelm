@@ -16,7 +16,7 @@ describe('model knowledge', () => {
     expect(record.evidence.some((item) => item.layer === 'runtime')).toBe(true)
     expect(explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-v4-flash')).toMatchObject({
       found: true,
-      hard: { runtimeReady: true },
+      hard: { runtimeReady: false },
     })
   })
 
@@ -48,6 +48,35 @@ describe('model knowledge', () => {
     }
     expect(parseKnowledgeBundle(bundle)).toEqual(bundle)
     expect(() => parseKnowledgeBundle({ ...bundle, records: [{ ...bundle.records[0], evidence: [] }] })).toThrow()
+  })
+
+  it('rejects populated hard claims without matching evidence', () => {
+    const bundle = {
+      schemaVersion: 1 as const,
+      bundleId: 'fixture-integrity',
+      generatedAt: '2026-08-18T00:00:00.000Z',
+      records: [{
+        id: 'fixture/model',
+        provider: 'fixture',
+        model: 'model',
+        displayName: 'Fixture',
+        hard: { protocol: 'openai-responses' },
+        soft: [],
+        adaptationHints: [],
+        evidence: [{
+          id: 'fixture-runtime',
+          layer: 'runtime' as const,
+          source: 'fixture',
+          observedAt: '2026-08-18T00:00:00.000Z',
+          subject: 'fixture/model',
+          claimType: 'runtimeReady' as const,
+          value: false,
+          confidence: 1,
+          staleAfterDays: 30,
+        }],
+      }],
+    }
+    expect(() => parseKnowledgeBundle(bundle)).toThrow(/protocol/)
   })
 
   it('reports stale evidence without pretending that stale data is runtime truth', () => {

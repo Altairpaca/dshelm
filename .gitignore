@@ -34,6 +34,7 @@ Thumbs.db
 
 # local runtime state
 .dshelm/local/
+.dshelm/credentials.json
 .omo/
 .ulw/
 .sisyphus/

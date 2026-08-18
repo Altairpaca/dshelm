@@ -1,6 +1,6 @@
 {
   "name": "@dshelm/compat-omo",
-  "version": "0.2.0-alpha.0",
+  "version": "0.3.0-alpha.0",
   "description": "DSHelm OmO compatibility: read-only migration parser and mapper (behavioral port, no source copy).",
   "type": "module",
   "exports": {

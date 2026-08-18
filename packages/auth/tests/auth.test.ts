@@ -7,6 +7,7 @@ import {
   NativeProductAuthAdapter,
   createPiAiOAuthDriver,
   credentialRef,
+  defaultCredentialStorePath,
   type AuthInteraction,
   type CommandResult,
   type ProductCommandRunner,
@@ -40,6 +41,10 @@ function runnerFor(results: readonly CommandResult[]): ProductCommandRunner {
 }
 
 describe('provider-neutral auth registry', () => {
+  it('resolves the default credential store outside the project directory', () => {
+    expect(defaultCredentialStorePath({ DSHELM_CONFIG_DIR: '/tmp/dshelm-config' })).toBe('/tmp/dshelm-config/credentials/credentials.json')
+    expect(defaultCredentialStorePath({ XDG_CONFIG_HOME: '/tmp/xdg' })).toBe('/tmp/xdg/dshelm/credentials/credentials.json')
+  })
   it('persists pi-ai credentials through a private 0600 file without exposing token material to status', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dshelm-auth-'))
     const path = join(directory, 'credentials.json')
@@ -110,13 +115,20 @@ describe('provider-neutral auth registry', () => {
       { exitCode: 1, stdout: 'refresh_token=never-return-this', stderr: '' },
     ])
     const adapter = new NativeProductAuthAdapter({
-      resourceId: 'codex-native',
-      product: 'ChatGPT/Codex',
-      runner,
-      probe: { command: 'codex', args: ['--version'] },
-      status: { command: 'codex', args: ['auth', 'status'] },
-      login: { command: 'codex', args: ['auth', 'login'] },
-      logout: { command: 'codex', args: ['auth', 'logout'] },
+    resourceId: 'codex-native',
+    product: 'ChatGPT/Codex',
+    runner,
+      descriptor: {
+        product: 'ChatGPT/Codex',
+        versionRange: 'fixture',
+        source: 'fixture',
+        verifiedAt: '2026-08-18T00:00:00Z',
+        preference: 'cli',
+        probe: { command: 'codex', args: ['--version'] },
+        status: { command: 'codex', args: ['auth', 'status'] },
+        login: { command: 'codex', args: ['auth', 'login'] },
+        logout: { command: 'codex', args: ['auth', 'logout'] },
+      },
       method: {
         id: 'chatgpt-product-login',
         kind: 'native-product',
@@ -135,6 +147,36 @@ describe('provider-neutral auth registry', () => {
     expect(statuses).toHaveLength(1)
     expect(statuses[0]).toMatchObject({ status: 'action-required', credentialRef: credentialRef('product/codex-native/default') })
     expect(JSON.stringify(statuses)).not.toContain('never-return-this')
+  })
+
+  it('reports unknown when a product descriptor has no verified status command', async () => {
+    const adapter = new NativeProductAuthAdapter({
+      resourceId: 'codex-native',
+      product: 'ChatGPT/Codex',
+      runner: runnerFor([{ exitCode: 0, stdout: 'codex 1.0.0', stderr: '' }]),
+      descriptor: {
+        product: 'ChatGPT/Codex',
+        versionRange: 'codex-cli current',
+        source: 'codex --help',
+        verifiedAt: '2026-08-18T00:00:00Z',
+        preference: 'cli',
+        probe: { command: 'codex', args: ['--version'] },
+        login: { command: 'codex', args: ['login'] },
+        logout: { command: 'codex', args: ['logout'] },
+      },
+      method: {
+        id: 'codex-login',
+        kind: 'native-product',
+        owner: 'product',
+        interactive: true,
+        headless: false,
+        refreshOwner: 'product',
+        credentialStoreOwner: 'product',
+        supportsMultiAccount: false,
+      },
+      credential: credentialRef('product/codex-native/default'),
+    })
+    expect((await adapter.status(context))[0]).toMatchObject({ status: 'unknown' })
   })
 
   it('keeps library OAuth ownership behind a driver and supports explicit login/logout', async () => {

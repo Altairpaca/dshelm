@@ -3,6 +3,7 @@ export { AuthContractError } from './errors.ts'
 export { AuthRegistry } from './registry.ts'
 export { createPiAiOAuthDriver } from './pi-ai-driver.ts'
 export { FileCredentialStore } from './pi-ai-store.ts'
+export { defaultCredentialStorePath } from './credential-path.ts'
 export type { PiAiOAuthDriverOptions } from './pi-ai-driver.ts'
 export { CredentialRef, credentialRef } from './contracts.ts'
 export type {
@@ -21,5 +22,6 @@ export type {
   LibraryOAuthDriver,
   LibraryOAuthStatus,
   NativeProductAuthAdapterOptions,
+  ProductAuthDescriptor,
   ProductCommandRunner,
 } from './contracts.ts'

@@ -15,6 +15,8 @@ import { registerDSHelmProvider } from './provider.ts'
 import { dshelmControlPlaneProjection } from './projection.ts'
 import { loadProjectPolicyLayer, installDSHelmSettings, type DSHelmUserSettings } from './config-files.ts'
 import { z } from 'zod'
+import { BASELINE_KNOWLEDGE_BUNDLE } from '@dshelm/model-knowledge'
+import { createDefaultDshKnowledge } from './knowledge.ts'
 
 export const name = 'dshelm'
 
@@ -75,6 +77,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
   const service = new DSHelmPolicyService(ctx, {
     layers,
     llm: ctx.llm,
+    knowledge: createDefaultDshKnowledge(BASELINE_KNOWLEDGE_BUNDLE),
     publish: (sessionId, snapshot) => {
       // Host→client transport: whole-value session event folded by the
       // session projection into the official projection wire frames.
@@ -98,6 +101,7 @@ export * from './backends.ts'
 export * from './capabilities.ts'
 export * from './config-files.ts'
 export * from './model-selection.ts'
+export * from './knowledge.ts'
 export * from './projection.ts'
 export * from './provider.ts'
 export * from './service.ts'

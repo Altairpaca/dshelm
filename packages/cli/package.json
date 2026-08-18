@@ -1,6 +1,6 @@
 {
-  "name": "@dshelm/cli",
-  "version": "0.2.0-alpha.0",
+  "name": "dshelm",
+  "version": "0.3.0-alpha.0",
   "description": "DSHelm CLI — doctor and distribution diagnostics for the DSHelm agent distribution.",
   "type": "module",
   "bin": {

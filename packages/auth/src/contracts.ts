@@ -86,6 +86,18 @@ export interface CommandSpec {
   readonly interactive?: boolean
 }
 
+export interface ProductAuthDescriptor {
+  readonly product: string
+  readonly versionRange: string
+  readonly source: string
+  readonly verifiedAt: string
+  readonly preference: 'cli' | 'sdk' | 'app-server'
+  readonly probe: CommandSpec
+  readonly status?: CommandSpec
+  readonly login: CommandSpec
+  readonly logout: CommandSpec
+}
+
 export interface CommandResult {
   readonly exitCode: number
   readonly stdout: string
@@ -113,10 +125,7 @@ export interface NativeProductAuthAdapterOptions {
   readonly resourceId: string
   readonly product: string
   readonly runner: ProductCommandRunner
-  readonly probe: CommandSpec
-  readonly status: CommandSpec
-  readonly login: CommandSpec
-  readonly logout: CommandSpec
+  readonly descriptor: ProductAuthDescriptor
   readonly method: AuthMethod
   readonly credential: CredentialRef
 }

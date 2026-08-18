@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process'
-import { join } from 'node:path'
 import { builtinModels } from '@earendil-works/pi-ai/providers/all'
 import {
   AuthRegistry,
@@ -9,6 +8,7 @@ import {
   NativeProductAuthAdapter,
   createPiAiOAuthDriver,
   credentialRef,
+  defaultCredentialStorePath,
   type AuthInteraction,
   type AuthMethod,
   type AuthProbeContext,
@@ -37,6 +37,45 @@ const PRODUCT_RESOURCES = [
   ['gemini-native', 'Gemini CLI', 'gemini'],
   ['qwen-native', 'Qwen Code', 'qwen'],
 ] as const
+
+const productAuthDescriptors = {
+  'codex-native': {
+    product: 'ChatGPT/Codex',
+    versionRange: 'codex-cli current',
+    source: 'codex --help (top-level login/logout commands)',
+    verifiedAt: '2026-08-18T00:00:00Z',
+    preference: 'cli',
+    login: { command: 'codex', args: ['login'], interactive: true },
+    logout: { command: 'codex', args: ['logout'] },
+  },
+  'claude-native': {
+    product: 'Claude Code',
+    versionRange: 'claude-code current',
+    source: 'https://docs.anthropic.com/en/docs/claude-code/overview',
+    verifiedAt: '2026-08-18T00:00:00Z',
+    preference: 'cli',
+    login: { command: 'claude', args: ['auth', 'login'], interactive: true },
+    logout: { command: 'claude', args: ['auth', 'logout'] },
+  },
+  'gemini-native': {
+    product: 'Gemini CLI',
+    versionRange: 'gemini-cli current',
+    source: 'https://github.com/google-gemini/gemini-cli',
+    verifiedAt: '2026-08-18T00:00:00Z',
+    preference: 'cli',
+    login: { command: 'gemini', args: ['auth', 'login'], interactive: true },
+    logout: { command: 'gemini', args: ['auth', 'logout'] },
+  },
+  'qwen-native': {
+    product: 'Qwen Code',
+    versionRange: 'qwen-code current',
+    source: 'https://github.com/QwenLM/qwen-code',
+    verifiedAt: '2026-08-18T00:00:00Z',
+    preference: 'cli',
+    login: { command: 'qwen', args: ['auth', 'login'], interactive: true },
+    logout: { command: 'qwen', args: ['auth', 'logout'] },
+  },
+} as const
 
 const apiKeyMethod = (id: string): AuthMethod => ({
   id,
@@ -96,19 +135,18 @@ export function createDefaultAuthRegistry(): AuthRegistry {
   }
   const runner = new SyncProductCommandRunner()
   for (const [resourceId, product, command] of PRODUCT_RESOURCES) {
+    const descriptor = productAuthDescriptors[resourceId]
+    if (descriptor === undefined) continue
     registry.register(new NativeProductAuthAdapter({
       resourceId,
       product,
       runner,
-      probe: { command, args: ['--version'] },
-      status: { command, args: ['auth', 'status'] },
-      login: { command, args: ['auth', 'login'], interactive: true },
-      logout: { command, args: ['auth', 'logout'] },
+      descriptor: { ...descriptor, probe: { command, args: ['--version'] } },
       method: nativeMethod(`${resourceId}-login`),
       credential: credentialRef(`product/${resourceId}/default`),
     }))
   }
-  const piModels = builtinModels({ credentials: new FileCredentialStore(join(process.cwd(), '.dshelm', 'credentials.json')) })
+  const piModels = builtinModels({ credentials: new FileCredentialStore(defaultCredentialStorePath()) })
   for (const provider of piModels.getProviders()) {
     if (provider.auth.oauth === undefined) continue
     const resourceId = `pi-ai/${provider.id}`

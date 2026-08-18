@@ -105,6 +105,8 @@ export async function initCommand(args: readonly string[]): Promise<number> {
   const result = await initProfile(createDefaultAuthRegistry(), defaultAuthProbeContext(), { cwd: process.cwd(), now: () => new Date() })
   console.log(`DSHelm init\n\n${result.written ? 'Generated' : 'Using existing'} ${result.path}`)
   console.log(`DSH: ${result.profile.dsh.available ? `available${result.profile.dsh.version === null ? '' : ` (${result.profile.dsh.version})`}` : 'not detected'}`)
+  console.log(`DSH profile manifest: ${result.profile.dshProfile.path}`)
+  console.log(`DSH bundles: ${result.profile.dshProfile.bundles.join(', ')}`)
   console.log(`Authenticated resources: ${result.profile.topology.authenticatedResources.join(', ') || 'none'}`)
   console.log(`Execution strategy: ${result.profile.topology.strategy}`)
   if (!args.includes('--yes')) console.log('No login was started. Use `dshelm auth login <resource>` for explicit interactive login.')

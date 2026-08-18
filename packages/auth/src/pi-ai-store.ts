@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { chmod, mkdir, open, readFile, rename, unlink } from 'node:fs/promises'
+import { chmod, mkdir, open, readFile, rename, stat, unlink } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { z } from 'zod'
 import type { Credential, CredentialInfo, CredentialStore } from '@earendil-works/pi-ai'
@@ -76,7 +76,14 @@ export class FileCredentialStore implements CredentialStore {
   private async withProviderLock<T>(providerId: string, task: () => Promise<T>): Promise<T> {
     const key = `${this.path}\u0000${providerId}`
     const previous = processLocks.get(key) ?? Promise.resolve()
-    const next = previous.catch(() => undefined).then(task)
+    const next = previous.catch(() => undefined).then(async () => {
+      const release = await acquireFileLock(`${this.path}.${encodeURIComponent(providerId)}.lock`)
+      try {
+        return await task()
+      } finally {
+        await release()
+      }
+    })
     processLocks.set(key, next.then(() => undefined, () => undefined))
     return next
   }
@@ -142,4 +149,32 @@ async function removeIfPresent(path: string): Promise<void> {
   } catch (error) {
     if (!isMissingFile(error)) throw error
   }
+}
+
+async function acquireFileLock(path: string): Promise<() => Promise<void>> {
+  const staleAfterMs = 300_000
+  for (;;) {
+    try {
+      const handle = await open(path, 'wx', 0o600)
+      await handle.close()
+      return async () => removeIfPresent(path)
+    } catch (error) {
+      if (!isErrorCode(error, 'EEXIST')) throw error
+      try {
+        const details = await stat(path)
+        if (Date.now() - details.mtimeMs > staleAfterMs) {
+          await removeIfPresent(path)
+          continue
+        }
+      } catch (statError) {
+        if (!isMissingFile(statError)) throw statError
+        continue
+      }
+      await new Promise<void>((resolve) => setTimeout(resolve, 25))
+    }
+  }
+}
+
+function isErrorCode(error: unknown, code: string): boolean {
+  return error instanceof Error && 'code' in error && error.code === code
 }
