@@ -89,10 +89,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @dshelm/auth build && pnpm --filter @dshelm/model-knowledge build
+      - run: pnpm build
       - run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
       - run: pnpm --filter dshelm typecheck
-      - run: pnpm --filter dshelm build
 
   pack-install:
     runs-on: ubuntu-latest

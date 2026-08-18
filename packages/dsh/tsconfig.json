@@ -18,5 +18,8 @@
   "exclude": [
     "tests",
     "src/client-rt"
+  ],
+  "references": [
+    { "path": "../model-knowledge" }
   ]
 }
