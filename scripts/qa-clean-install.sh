@@ -10,7 +10,9 @@ CLI_BIN="$(readlink -f "$1")"
 CORE_TGZ="$(readlink -f "$2")"
 MODEL_KNOWLEDGE_TGZ="$(readlink -f "$3")"
 DSH_TGZ="$(readlink -f "$4")"
-DSH_BIN="$(readlink -f "${5:-dsh}")"
+# Preserve a supplied .bin symlink so `init` can find the same DSH CLI through
+# PATH; resolving it would leave only the package lib directory on PATH.
+DSH_BIN="$(realpath -s "${5:-dsh}")"
 TMP_ROOT="$(mktemp -d -t dshelm-clean-install-XXXXXX)"
 HOME_DIR="$TMP_ROOT/home"
 DSH_HOME_DIR="$TMP_ROOT/dsh-home"
