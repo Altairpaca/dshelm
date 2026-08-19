@@ -1,17 +1,26 @@
 # DSHelm
 
-DSHelm is an OmO-inspired distribution for DeepSeek Harness (DSH). It discovers the models, subscriptions, API keys, local runtimes, and product CLIs already available on a machine, then builds an explainable execution topology from resources that are actually usable.
+DSHelm is an OmO-inspired, DSH-native distribution. It turns configured API keys,
+provider-owned OAuth, product status probes, and DSH model capabilities into
+evidence-backed, explainable routing resources. It is a resource discovery and
+composition layer, not a second task runtime or a static role-to-model preset.
 
 ## Install
 
+For a published release, the intended entry point is `dshelm init --yes`. The
+package is not yet published to npm; the verified source checkout path is:
+
 ```bash
-npx dshelm init --yes
-dshelm auth status
-dshelm models inspect
-dshelm doctor
+pnpm install --frozen-lockfile
+pnpm build
+node packages/cli/dist/index.js init --yes
+node packages/cli/dist/index.js auth status
+node packages/cli/dist/index.js doctor
 ```
 
-`init` is idempotent. It writes `.dshelm/profile.json` and `.dshelm/dsh-profile/package.json`, never starts a browser login, and never copies another product's credential files. Login is explicit:
+`init` is idempotent. It writes project discovery metadata and installs the
+official DSH profile at `$DSH_HOME/profiles/dshelm`; it never starts a browser
+login or copies another product's credential files. Login is explicit:
 
 ```bash
 dshelm auth login pi-ai/anthropic
@@ -22,7 +31,13 @@ The public package is `dshelm`; workspace packages remain available under `@dshe
 
 ## Discovery and security
 
-DSHelm probes host-managed API keys, provider-owned pi-ai OAuth, product-managed CLI accounts, DSH exact model resolution, reasoning efforts, runtime capabilities, and optional AgentTeams availability. Codex uses its documented top-level `login` and `logout` commands. Products without a verified status surface are reported as `unknown`, never guessed as authenticated.
+DSHelm currently probes configured host API-key references, provider-owned pi-ai
+OAuth, selected version-gated product status surfaces, and DSH exact-model
+capabilities. Codex and Claude descriptors are version-gated; Gemini and Qwen
+shell login/logout are intentionally unsupported because their current public
+auth flow is interactive. Products without a verified status surface are
+reported as `unknown`, never guessed as authenticated. Generic subscription and
+local-runtime discovery remain research work.
 
 Only opaque `CredentialRef` values enter policy and traces. DSHelm-managed OAuth fallback storage is user-scoped under the platform config directory with restrictive permissions. Product-managed secrets remain with the product.
 
@@ -35,11 +50,16 @@ dshelm explain deepseek/deepseek-v4-flash
 dshelm models explain anthropic/claude-sonnet-4-5
 ```
 
-Explanations identify runtime, official, community, and empirical evidence. Product-managed execution is labeled when its final model or request headers cannot be observed. The baseline includes DeepSeek V4 Flash/Pro, GPT-5 mini, Claude Sonnet 4.5, local Qwen3, and gpt-oss examples. Soft scores are source-linked, confidence-weighted, and harness-aware; they are not permanent roles or a leaderboard.
+Explanations identify runtime, official, community, and empirical evidence. Product-managed execution is labeled when its final model or request headers cannot be observed. The baseline includes DeepSeek V4 Flash/Pro, GPT-5 mini, Claude Sonnet 4.5, local Qwen3, and gpt-oss examples. Soft scores are source-linked, confidence-weighted maintainer heuristics; the current bundle is model-global and only conditionally informative across harnesses, not a permanent role map or leaderboard.
 
 ## DSH and OmO composition
 
-The `@dshelm/dsh` plugin provides the `dshelm.policy` host service and injects the model knowledge snapshot into live exact-model resolution. It composes with DSH native subagents and describes AgentTeams as a durable backend when that plugin is installed. OmO migration preserves routing intent and emits `SUPPORTED`, `MAPPED`, `LOSSY`, or `UNSUPPORTED`; credentials are never migrated.
+The `@dshelm/dsh` plugin provides the `dshelm.policy` host service and injects
+the model knowledge snapshot into live exact-model resolution. DSH-native
+composition is verified; AgentTeams integration is a deferred research/backend
+verification item and is not claimed as a verified v0.3 route. OmO migration
+preserves routing intent and emits `SUPPORTED`, `MAPPED`, `LOSSY`, or
+`UNSUPPORTED`; credentials are never migrated.
 
 ```bash
 dshelm migrate omo --config ~/.omo/omo.jsonc

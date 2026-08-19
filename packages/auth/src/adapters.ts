@@ -11,6 +11,7 @@ import type {
   NativeProductAuthAdapterOptions,
   ProductCommandRunner,
   CommandSpec,
+  ProductAuthDescriptor,
 } from './contracts.ts'
 
 function statusResult(
@@ -34,7 +35,7 @@ function statusResult(
   }
 }
 
-async function runCommand(runner: ProductCommandRunner, spec: CommandSpec): Promise<{ readonly result?: { readonly exitCode: number }; readonly failed: boolean }> {
+async function runCommand(runner: ProductCommandRunner, spec: CommandSpec): Promise<{ readonly result?: { readonly exitCode: number; readonly stdout: string; readonly stderr: string }; readonly failed: boolean }> {
   try {
     const result = await runner.run(spec)
     return { result, failed: false }
@@ -52,6 +53,30 @@ function requireMethod(methods: readonly AuthMethod[], methodId: string): AuthMe
   return method
 }
 
+type ProductCompatibility =
+  | { readonly status: 'compatible'; readonly version: string }
+  | { readonly status: 'unknown'; readonly detail: string }
+  | { readonly status: 'unsupported'; readonly detail: string }
+
+function detectVersion(descriptor: ProductAuthDescriptor, output: string): string | undefined {
+  descriptor.version.pattern.lastIndex = 0
+  return descriptor.version.pattern.exec(output)?.[1]
+}
+
+async function checkCompatibility(runner: ProductCommandRunner, descriptor: ProductAuthDescriptor): Promise<ProductCompatibility> {
+  const outcome = await runCommand(runner, descriptor.probe)
+  if (outcome.failed || outcome.result?.exitCode !== 0) {
+    return { status: 'unknown', detail: 'product CLI probe failed' }
+  }
+  const output = `${outcome.result.stdout}\n${outcome.result.stderr}`
+  const version = detectVersion(descriptor, output)
+  if (version === undefined) return { status: 'unknown', detail: 'product CLI version could not be parsed' }
+  if (!descriptor.version.verifiedVersions.includes(version)) {
+    return { status: 'unsupported', detail: `product version ${version} is outside the verified descriptor versions` }
+  }
+  return { status: 'compatible', version }
+}
+
 export class NativeProductAuthAdapter implements AuthAdapter {
   readonly resourceId: string
   readonly product: string
@@ -66,21 +91,31 @@ export class NativeProductAuthAdapter implements AuthAdapter {
   }
 
   async probe(_context: AuthProbeContext): Promise<readonly AuthStatusResult[]> {
-    const outcome = await runCommand(this.options.runner, this.options.descriptor.probe)
+    const compatibility = await checkCompatibility(this.options.runner, this.options.descriptor)
     return [statusResult(
       this.resourceId,
       this.product,
       this.options.method,
-      outcome.failed || outcome.result?.exitCode !== 0 ? 'unknown' : 'available',
-      outcome.failed ? 'product CLI probe failed' : 'product CLI detected',
+      compatibility.status === 'compatible' ? 'available' : compatibility.status,
+      compatibility.status === 'compatible' ? `product CLI detected (version ${compatibility.version})` : compatibility.detail,
       this.options.credential,
     )]
   }
 
   async status(context: AuthProbeContext): Promise<readonly AuthStatusResult[]> {
-    const probe = await this.probe(context)
-    const probeStatus = probe[0]
-    if (probeStatus?.status === 'unknown') return probe
+    const compatibility = await checkCompatibility(this.options.runner, this.options.descriptor)
+    if (compatibility.status !== 'compatible') {
+      return [statusResult(
+        this.resourceId,
+        this.product,
+        this.options.method,
+        compatibility.status,
+        compatibility.status === 'unsupported' && this.options.descriptor.unsupportedReason !== undefined
+          ? this.options.descriptor.unsupportedReason
+          : compatibility.detail,
+        this.options.credential,
+      )]
+    }
     const statusSpec = this.options.descriptor.status
     if (statusSpec === undefined) {
       return [statusResult(
@@ -88,7 +123,7 @@ export class NativeProductAuthAdapter implements AuthAdapter {
         this.product,
         this.options.method,
         'unknown',
-        'product exposes no verified non-interactive auth status surface',
+        this.options.descriptor.unsupportedReason ?? 'product exposes no verified non-interactive auth status surface',
         this.options.credential,
       )]
     }
@@ -109,6 +144,13 @@ export class NativeProductAuthAdapter implements AuthAdapter {
   async login(methodId: string, _interaction: AuthInteraction, _context: AuthProbeContext): Promise<AuthStatusResult> {
     const method = requireMethod(this.methods, methodId)
     if (!method.interactive) throw new AuthContractError('unsupported-operation', `Auth method "${methodId}" is not interactive`)
+    const compatibility = await checkCompatibility(this.options.runner, this.options.descriptor)
+    if (compatibility.status !== 'compatible') {
+      return statusResult(this.resourceId, this.product, method, compatibility.status, compatibility.detail, this.options.credential)
+    }
+    if (this.options.descriptor.login === undefined) {
+      return statusResult(this.resourceId, this.product, method, 'unsupported', this.options.descriptor.unsupportedReason ?? 'product exposes no verified login command', this.options.credential)
+    }
     const outcome = await runCommand(this.options.runner, this.options.descriptor.login)
     return statusResult(
       this.resourceId,
@@ -122,6 +164,13 @@ export class NativeProductAuthAdapter implements AuthAdapter {
 
   async logout(methodId: string, _context: AuthProbeContext): Promise<AuthStatusResult> {
     const method = requireMethod(this.methods, methodId)
+    const compatibility = await checkCompatibility(this.options.runner, this.options.descriptor)
+    if (compatibility.status !== 'compatible') {
+      return statusResult(this.resourceId, this.product, method, compatibility.status, compatibility.detail, this.options.credential)
+    }
+    if (this.options.descriptor.logout === undefined) {
+      return statusResult(this.resourceId, this.product, method, 'unsupported', this.options.descriptor.unsupportedReason ?? 'product exposes no verified logout command', this.options.credential)
+    }
     const outcome = await runCommand(this.options.runner, this.options.descriptor.logout)
     return statusResult(
       this.resourceId,

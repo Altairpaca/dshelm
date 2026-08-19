@@ -29,8 +29,26 @@ describe('DSH capability knowledge overlay', () => {
     })
     const info = await capabilities.providers.fixture?.resolveModel?.('model')
     expect(info).toMatchObject({ valid: true, authReady: true, contextWindow: 128_000, backend: 'dsh-native', softScores: { strongPlanning: 0.72 } })
+    expect(info).not.toHaveProperty('localDeployment')
     expect(info?.evidence?.[0]?.layer).toBe('empirical')
     expect(capabilities.knowledgeSnapshot).toBe('fixture-knowledge-v1')
+  })
+
+  it('does not let a soft knowledge score bypass an exact runtime failure', async () => {
+    const unavailableLlm: LlmLike = {
+      listProviders: () => [{ id: 'fixture', name: 'Fixture' }],
+      resolveModelInfo: async () => {
+        const error = new Error('adapter missing') as Error & { code: string }
+        error.code = 'NO_ADAPTER'
+        throw error
+      },
+      listModels: async () => [],
+    }
+    const capabilities = createDshCapabilities(unavailableLlm, {
+      snapshot: 'fixture-knowledge-v2',
+      lookup: () => ({ softScores: { strongPlanning: 1 }, evidence: [{ source: 'heuristic', layer: 'community', confidence: 0.2 }] }),
+    })
+    await expect(capabilities.providers.fixture?.resolveModel?.('model')).resolves.toMatchObject({ valid: false, reason: 'model-unresolved' })
   })
 
   it('changes a production resolver choice when shipped knowledge scores differ', async () => {

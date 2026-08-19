@@ -77,6 +77,7 @@ export class FileCredentialStore implements CredentialStore {
     const key = `${this.path}\u0000${providerId}`
     const previous = processLocks.get(key) ?? Promise.resolve()
     const next = previous.catch(() => undefined).then(async () => {
+      await ensureCredentialDirectory(this.path)
       const release = await acquireFileLock(`${this.path}.${encodeURIComponent(providerId)}.lock`)
       try {
         return await task()
@@ -117,6 +118,12 @@ export class FileCredentialStore implements CredentialStore {
     await rename(temporaryPath, this.path)
     await chmod(this.path, 0o600)
   }
+}
+
+async function ensureCredentialDirectory(path: string): Promise<void> {
+  const directory = dirname(path)
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  await chmod(directory, 0o700)
 }
 
 function toPersistedState(value: z.infer<typeof persistedState>): PersistedState {

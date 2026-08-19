@@ -79,6 +79,30 @@ describe('model knowledge', () => {
     expect(() => parseKnowledgeBundle(bundle)).toThrow(/protocol/)
   })
 
+  it('rejects hard capability values that contradict their evidence', () => {
+    const record = BASELINE_KNOWLEDGE_BUNDLE.records[0]
+    expect(() => parseKnowledgeBundle({
+      ...BASELINE_KNOWLEDGE_BUNDLE,
+      records: [{ ...record, hard: { ...record.hard, runtimeReady: true } }],
+    })).toThrow(/contradicts runtimeReady/)
+  })
+
+  it('rejects a soft capability backed by a different claim type without derivation', () => {
+    const record = BASELINE_KNOWLEDGE_BUNDLE.records[0]
+    const invalid = {
+      ...record,
+      soft: [{ capability: 'planning' as const, score: 0.8, confidence: 0.4, scoreBasis: 'maintainer-heuristic' as const, evidenceIds: ['deepseek-flash-agentic'] }],
+    }
+    expect(() => parseKnowledgeBundle({ ...BASELINE_KNOWLEDGE_BUNDLE, records: [invalid] })).toThrow(/not planning/)
+  })
+
+  it('exposes score basis and claim evidence in explain output', () => {
+    const explanation = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-v4-flash')
+    expect(explanation).toMatchObject({ found: true })
+    if (!explanation.found) return
+    expect(explanation.soft[0]).toMatchObject({ scoreBasis: 'maintainer-heuristic', evidence: [{ claimType: 'agenticCoding' }] })
+  })
+
   it('reports stale evidence without pretending that stale data is runtime truth', () => {
     const result = knowledgeStatus(BASELINE_KNOWLEDGE_BUNDLE, new Date('2027-01-01T00:00:00.000Z'))
     expect(result.status).toBe('stale')
@@ -89,7 +113,7 @@ describe('model knowledge', () => {
   it('projects knowledge into routing evidence without manufacturing runtime readiness', () => {
     const record = {
       ...BASELINE_KNOWLEDGE_BUNDLE.records[0],
-      soft: [{ capability: 'planning', score: 0.9, confidence: 0.8, evidenceIds: ['dsh-keyless-exact-model-flash'] }],
+      soft: [{ capability: 'planning', score: 0.9, confidence: 0.8, scoreBasis: 'maintainer-heuristic', evidenceIds: ['dsh-keyless-exact-model-flash'] }],
     }
     const overlay = runtimeKnowledgeOverlay(record)
     expect(overlay.softScores?.strongPlanning).toBeCloseTo(0.72)

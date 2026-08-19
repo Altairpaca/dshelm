@@ -86,16 +86,24 @@ export interface CommandSpec {
   readonly interactive?: boolean
 }
 
+export interface ProductVersionGate {
+  /** Versions whose command grammar was actually verified against this descriptor. */
+  readonly verifiedVersions: readonly string[]
+  /** Extracts a normalized product version from the probe command output. */
+  readonly pattern: RegExp
+}
+
 export interface ProductAuthDescriptor {
   readonly product: string
-  readonly versionRange: string
+  readonly version: ProductVersionGate
   readonly source: string
   readonly verifiedAt: string
   readonly preference: 'cli' | 'sdk' | 'app-server'
   readonly probe: CommandSpec
   readonly status?: CommandSpec
-  readonly login: CommandSpec
-  readonly logout: CommandSpec
+  readonly login?: CommandSpec
+  readonly logout?: CommandSpec
+  readonly unsupportedReason?: string
 }
 
 export interface CommandResult {

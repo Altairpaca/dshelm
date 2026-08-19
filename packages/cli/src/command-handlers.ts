@@ -102,15 +102,26 @@ export function knowledgeCommand(args: readonly string[]): number {
 }
 
 export async function initCommand(args: readonly string[]): Promise<number> {
-  const result = await initProfile(createDefaultAuthRegistry(), defaultAuthProbeContext(), { cwd: process.cwd(), now: () => new Date() })
-  console.log(`DSHelm init\n\n${result.written ? 'Generated' : 'Using existing'} ${result.path}`)
-  console.log(`DSH: ${result.profile.dsh.available ? `available${result.profile.dsh.version === null ? '' : ` (${result.profile.dsh.version})`}` : 'not detected'}`)
-  console.log(`DSH profile manifest: ${result.profile.dshProfile.path}`)
-  console.log(`DSH bundles: ${result.profile.dshProfile.bundles.join(', ')}`)
-  console.log(`Authenticated resources: ${result.profile.topology.authenticatedResources.join(', ') || 'none'}`)
-  console.log(`Execution strategy: ${result.profile.topology.strategy}`)
-  if (!args.includes('--yes')) console.log('No login was started. Use `dshelm auth login <resource>` for explicit interactive login.')
-  return 0
+  try {
+    const result = await initProfile(createDefaultAuthRegistry(), defaultAuthProbeContext(), {
+      cwd: process.cwd(),
+      now: () => new Date(),
+      env: process.env,
+      ...(process.env.DSHELM_DSH_BUNDLE_SPEC === undefined ? {} : { dshBundleSpec: process.env.DSHELM_DSH_BUNDLE_SPEC }),
+      ...(process.env.DSHELM_DSH_BUNDLE_SPECS === undefined ? {} : { dshBundleSpecs: process.env.DSHELM_DSH_BUNDLE_SPECS.split(',').filter((spec) => spec.length > 0) }),
+    })
+    console.log(`DSHelm init\n\n${result.written ? 'Generated' : 'Using existing'} ${result.path}`)
+    console.log(`DSH: ${result.profile.dsh.available ? `available${result.profile.dsh.version === null ? '' : ` (${result.profile.dsh.version})`}` : 'not detected'}`)
+    console.log(`DSH profile manifest: ${result.profile.dshProfile.path}`)
+    console.log(`DSH bundles: ${result.profile.dshProfile.bundles.join(', ')}`)
+    console.log(`Authenticated resources: ${result.profile.topology.authenticatedResources.join(', ') || 'none'}`)
+    console.log(`Execution strategy: ${result.profile.topology.strategy}`)
+    if (!args.includes('--yes')) console.log('No login was started. Use `dshelm auth login <resource>` for explicit interactive login.')
+    return 0
+  } catch (error) {
+    console.error(`init failed: ${error instanceof Error ? error.message : String(error)}`)
+    return 1
+  }
 }
 
 export async function uninstallCommand(args: readonly string[]): Promise<number> {
@@ -118,7 +129,7 @@ export async function uninstallCommand(args: readonly string[]): Promise<number>
     console.error('uninstall requires --yes; credentials are preserved unless --purge-credentials is also set')
     return 1
   }
-  const result = await uninstallProfile({ cwd: process.cwd(), purgeCredentials: args.includes('--purge-credentials') })
+  const result = await uninstallProfile({ cwd: process.cwd(), purgeCredentials: args.includes('--purge-credentials'), env: process.env })
   console.log(`DSHelm uninstall\n\nprofile=${result.removedProfile ? 'removed' : 'absent'} credentials=${result.removedCredentials ? 'purged' : 'preserved'}`)
   return 0
 }

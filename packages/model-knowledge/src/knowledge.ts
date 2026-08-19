@@ -4,8 +4,6 @@ import type { EvidenceLayer, KnowledgeBundle, KnowledgeEvidence, ModelKnowledgeR
 export type KnowledgeRoutingCapability = 'strongPlanning' | 'longHorizonCoding' | 'cheapParallelism' | 'independentVerification' | 'largeContextStability' | 'fastLatency'
 
 export type RuntimeKnowledgeOverlay = {
-  readonly contextWindow?: number
-  readonly localDeployment?: boolean
   readonly softScores?: Readonly<Partial<Record<KnowledgeRoutingCapability, number>>>
   readonly evidence: readonly { readonly source: string; readonly layer: EvidenceLayer; readonly confidence: number }[]
 }
@@ -48,6 +46,14 @@ type ModelExplanation =
       readonly displayName: string
       readonly hard: ModelKnowledgeRecord['hard'] & { readonly runtimeReady: boolean }
       readonly evidenceByLayer: Readonly<Record<EvidenceLayer, readonly string[]>>
+      readonly soft: readonly {
+        readonly capability: ModelKnowledgeRecord['soft'][number]['capability']
+        readonly score: number
+        readonly confidence: number
+        readonly scoreBasis: ModelKnowledgeRecord['soft'][number]['scoreBasis']
+        readonly evidence: readonly Pick<KnowledgeEvidence, 'id' | 'claimType' | 'layer' | 'confidence'>[]
+        readonly derivation?: ModelKnowledgeRecord['soft'][number]['derivation']
+      }[]
       readonly adaptationHints: ModelKnowledgeRecord['adaptationHints']
     }
 
@@ -68,6 +74,17 @@ export function explainModel(bundle: KnowledgeBundle, provider: string, model: s
     displayName: record.displayName,
     hard: { ...record.hard, runtimeReady: record.hard.runtimeReady ?? false },
     evidenceByLayer,
+    soft: record.soft.map((capability) => ({
+      capability: capability.capability,
+      score: capability.score,
+      confidence: capability.confidence,
+      scoreBasis: capability.scoreBasis,
+      evidence: capability.evidenceIds.flatMap((id) => {
+        const evidence = record.evidence.find((item) => item.id === id)
+        return evidence === undefined ? [] : [{ id: evidence.id, claimType: evidence.claimType, layer: evidence.layer, confidence: evidence.confidence }]
+      }),
+      ...(capability.derivation === undefined ? {} : { derivation: capability.derivation }),
+    })),
     adaptationHints: record.adaptationHints,
   }
 }
@@ -79,8 +96,6 @@ export function runtimeKnowledgeOverlay(record: ModelKnowledgeRecord): RuntimeKn
     if (mapped !== undefined) softScores[mapped] = capability.score * capability.confidence
   }
   return {
-    ...(record.hard.contextWindow === undefined ? {} : { contextWindow: record.hard.contextWindow }),
-    ...(record.hard.localDeployment === undefined ? {} : { localDeployment: record.hard.localDeployment }),
     ...(Object.keys(softScores).length === 0 ? {} : { softScores }),
     evidence: record.evidence.map((evidence) => ({ source: evidence.source, layer: evidence.layer, confidence: evidence.confidence })),
   }

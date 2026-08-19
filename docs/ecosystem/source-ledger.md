@@ -89,7 +89,21 @@ See each package.json.
 | DSHelm `@dshelm/auth` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | opaque credential refs and ownership-neutral auth adapters |
 | DSHelm `@dshelm/model-knowledge` | local package `0.3.0-alpha.0` | Apache-2.0 | DEPENDENCY (internal) | Zod-validated runtime/official/community/empirical evidence bundle |
 
-## 9. Unresolved / watch items
+## 9. Native product auth audit (2026-08-18)
+
+| Product | Observed public seam | Verified snapshot | DSHelm disposition |
+|---|---|---|---|
+| OpenAI Codex | top-level `codex login` / `codex logout`; app-server account APIs include `account/read`, `account/login/start`, `account/login/cancel`, `account/logout` | CLI `0.147.0`; source `0acf302db5ffedea4b8ef0112f4cbcddd65cff57` | current version-gated descriptor; app-server is future candidate |
+| Claude Code | `claude auth login/status/logout` | `2.1.234`; source `354757e5b2d9aa1ebb62e5d05ecd384f0e11c0f7` | current version-gated descriptor |
+| Gemini CLI | interactive `/auth` flow; no verified shell `auth login/logout` | `0.55.1`; source `24cc26ccb15522b55c4f8a63b2f894fb99b8e82a` | unsupported shell descriptor; no guessed command |
+| Qwen Code | interactive `/auth`; legacy `qwen auth` removed; daemon/SDK seam is not a shell contract | `0.21.13`; source `179c8f80fd14da7e76b370ee58db1a733f9e21ae` | unsupported shell descriptor; daemon/SDK remains research |
+| xAI/Grok native product | no stable public native CLI/app-server auth seam verified | audit snapshot | no native descriptor; provider-owned pi-ai OAuth remains separate |
+
+Descriptor versions are compatibility evidence, not a promise that future
+versions work. Unknown or out-of-range versions must not execute sensitive
+login/logout commands.
+
+## 10. Unresolved / watch items
 
 - oh-my-dsh (LaplaceYoung) license: re-check monthly; if a permissive
   license appears, reassess absorption candidates individually.

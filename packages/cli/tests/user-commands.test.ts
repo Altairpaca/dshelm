@@ -40,22 +40,40 @@ describe('DSHelm user command projections', () => {
   it('uninstalls the generated profile while preserving credentials unless purge is explicit', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'dshelm-uninstall-'))
     const directory = join(cwd, '.dshelm')
+    const dshHome = join(cwd, 'dsh-home')
+    const env = { DSHELM_CONFIG_DIR: join(cwd, 'config') }
     await mkdir(directory)
     await writeFile(join(directory, 'profile.json'), '{}')
     await writeFile(join(directory, 'credentials.json'), '{"version":1,"credentials":{}}')
-    expect(await uninstallProfile({ cwd, purgeCredentials: false })).toMatchObject({ removedProfile: true, removedCredentials: false })
+    expect(await uninstallProfile({ cwd, dshHome, env, purgeCredentials: false })).toMatchObject({ removedProfile: true, removedCredentials: false })
     await readFile(join(directory, 'credentials.json'), 'utf8')
-    expect(await uninstallProfile({ cwd, purgeCredentials: true })).toMatchObject({ removedCredentials: true })
+    await mkdir(join(env.DSHELM_CONFIG_DIR, 'credentials'), { recursive: true })
+    await writeFile(join(env.DSHELM_CONFIG_DIR, 'credentials', 'credentials.json'), '{"version":1,"credentials":{}}', { mode: 0o600 })
+    expect(await uninstallProfile({ cwd, dshHome, env, purgeCredentials: true })).toMatchObject({ removedCredentials: true })
+    await expect(readFile(join(directory, 'credentials.json'), 'utf8')).rejects.toThrow()
+    await expect(readFile(join(env.DSHELM_CONFIG_DIR, 'credentials', 'credentials.json'), 'utf8')).rejects.toThrow()
   })
 
-  it('generates a DSH profile manifest without creating project credentials', async () => {
+  it('installs the official DSH profile without creating project credentials', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'dshelm-init-'))
-    const result = await initProfile(new AuthRegistry(), { ...defaultAuthProbeContext(), commandExists: async () => false }, { cwd, now: () => new Date('2026-08-18T00:00:00.000Z') })
+    const dshHome = join(cwd, 'dsh-home')
+    const result = await initProfile(new AuthRegistry(), { ...defaultAuthProbeContext(), commandExists: async () => false }, {
+      cwd,
+      dshHome,
+      now: () => new Date('2026-08-18T00:00:00.000Z'),
+      installDshProfile: async ({ profileDir, bundleSpecs }) => {
+        expect(bundleSpecs).toEqual(['@dshelm/dsh@0.3.0-alpha.0'])
+        await mkdir(join(profileDir, 'node_modules', '@dshelm', 'dsh'), { recursive: true })
+        await writeFile(join(profileDir, 'node_modules', '@dshelm', 'dsh', 'package.json'), JSON.stringify({ name: '@dshelm/dsh', version: '0.3.0-alpha.0' }))
+        await writeFile(join(profileDir, 'package.json'), JSON.stringify({ name: 'dsh-profile-dshelm', private: true, dependencies: { '@dshelm/dsh': 'fixture' }, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] } } }))
+      },
+    })
     expect(result.written).toBe(true)
     expect(result.profile.dshProfile.bundles).toEqual(['@deepseek-ai/dsh-base', '@dshelm/dsh'])
     expect(result.path).toBe(join(cwd, '.dshelm', 'profile.json'))
+    expect(result.profile.dshProfile.path).toBe(join(dshHome, 'profiles', 'dshelm'))
     await expect(readFile(join(cwd, '.dshelm', 'credentials.json'), 'utf8')).rejects.toThrow()
-    expect(JSON.parse(await readFile(join(cwd, '.dshelm', 'dsh-profile', 'package.json'), 'utf8'))).toMatchObject({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] } } })
+    expect(JSON.parse(await readFile(join(dshHome, 'profiles', 'dshelm', 'package.json'), 'utf8'))).toMatchObject({ dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] } } })
   })
 
   it('reports knowledge staleness as a machine-readable status line', () => {

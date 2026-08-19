@@ -12,7 +12,7 @@ import {
   type CommandResult,
   type ProductCommandRunner,
 } from '../src/index.ts'
-import { mkdtemp, readFile, stat } from 'node:fs/promises'
+import { access, mkdtemp, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createModels } from '@earendil-works/pi-ai'
@@ -44,6 +44,19 @@ describe('provider-neutral auth registry', () => {
   it('resolves the default credential store outside the project directory', () => {
     expect(defaultCredentialStorePath({ DSHELM_CONFIG_DIR: '/tmp/dshelm-config' })).toBe('/tmp/dshelm-config/credentials/credentials.json')
     expect(defaultCredentialStorePath({ XDG_CONFIG_HOME: '/tmp/xdg' })).toBe('/tmp/xdg/dshelm/credentials/credentials.json')
+  })
+  it('creates a missing credential parent before the first lock acquisition', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dshelm-auth-cold-start-'))
+    const directory = join(root, 'missing', 'credentials')
+    const path = join(directory, 'credentials.json')
+    const store = new FileCredentialStore(path)
+
+    await store.modify('fixture', async () => ({ type: 'oauth', refresh: 'refresh-fixture', access: 'access-fixture', expires: 1_800_000_000_000 }))
+
+    expect((await stat(directory)).mode & 0o777).toBe(0o700)
+    expect((await stat(path)).mode & 0o777).toBe(0o600)
+    await expect(access(`${path}.fixture.lock`)).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(store.read('fixture')).resolves.toMatchObject({ type: 'oauth', refresh: 'refresh-fixture' })
   })
   it('persists pi-ai credentials through a private 0600 file without exposing token material to status', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'dshelm-auth-'))
@@ -120,7 +133,7 @@ describe('provider-neutral auth registry', () => {
     runner,
       descriptor: {
         product: 'ChatGPT/Codex',
-        versionRange: 'fixture',
+        version: { verifiedVersions: ['1.0.0'], pattern: /codex\s+(\d+\.\d+\.\d+)/ },
         source: 'fixture',
         verifiedAt: '2026-08-18T00:00:00Z',
         preference: 'cli',
@@ -156,7 +169,7 @@ describe('provider-neutral auth registry', () => {
       runner: runnerFor([{ exitCode: 0, stdout: 'codex 1.0.0', stderr: '' }]),
       descriptor: {
         product: 'ChatGPT/Codex',
-        versionRange: 'codex-cli current',
+        version: { verifiedVersions: ['1.0.0'], pattern: /codex\s+(\d+\.\d+\.\d+)/ },
         source: 'codex --help',
         verifiedAt: '2026-08-18T00:00:00Z',
         preference: 'cli',
@@ -177,6 +190,82 @@ describe('provider-neutral auth registry', () => {
       credential: credentialRef('product/codex-native/default'),
     })
     expect((await adapter.status(context))[0]).toMatchObject({ status: 'unknown' })
+  })
+
+  it('does not execute login or logout for an unsupported product version', async () => {
+    const calls: string[] = []
+    const adapter = new NativeProductAuthAdapter({
+      resourceId: 'gemini-native',
+      product: 'Gemini CLI',
+      runner: {
+        run: async (spec) => {
+          calls.push(`${spec.command} ${spec.args.join(' ')}`)
+          return { exitCode: 0, stdout: 'gemini-cli 0.55.1', stderr: '' }
+        },
+      },
+      descriptor: {
+        product: 'Gemini CLI',
+        version: { verifiedVersions: ['0.55.0'], pattern: /gemini-cli\s+(\d+\.\d+\.\d+)/ },
+        source: 'fixture slash auth',
+        verifiedAt: '2026-08-18T00:00:00Z',
+        preference: 'cli',
+        probe: { command: 'gemini', args: ['--version'] },
+        unsupportedReason: 'interactive /auth only',
+      },
+      method: {
+        id: 'gemini-login',
+        kind: 'native-product',
+        owner: 'product',
+        interactive: true,
+        headless: false,
+        refreshOwner: 'product',
+        credentialStoreOwner: 'product',
+        supportsMultiAccount: false,
+      },
+      credential: credentialRef('product/gemini-native/default'),
+    })
+
+    await expect(adapter.login('gemini-login', interaction, context)).resolves.toMatchObject({ status: 'unsupported' })
+    await expect(adapter.logout('gemini-login', context)).resolves.toMatchObject({ status: 'unsupported' })
+    expect(calls).toEqual(['gemini --version', 'gemini --version'])
+  })
+
+  it('returns unknown and runs only the probe when the product version is not parseable', async () => {
+    const calls: string[] = []
+    const adapter = new NativeProductAuthAdapter({
+      resourceId: 'codex-native',
+      product: 'ChatGPT/Codex',
+      runner: {
+        run: async (spec) => {
+          calls.push(`${spec.command} ${spec.args.join(' ')}`)
+          return { exitCode: 0, stdout: 'codex-cli development-build', stderr: '' }
+        },
+      },
+      descriptor: {
+        product: 'ChatGPT/Codex',
+        version: { verifiedVersions: ['1.0.0'], pattern: /codex-cli\s+(\d+\.\d+\.\d+)/ },
+        source: 'fixture',
+        verifiedAt: '2026-08-18T00:00:00Z',
+        preference: 'cli',
+        probe: { command: 'codex', args: ['--version'] },
+        login: { command: 'codex', args: ['login'], interactive: true },
+        logout: { command: 'codex', args: ['logout'] },
+      },
+      method: {
+        id: 'codex-login',
+        kind: 'native-product',
+        owner: 'product',
+        interactive: true,
+        headless: false,
+        refreshOwner: 'product',
+        credentialStoreOwner: 'product',
+        supportsMultiAccount: false,
+      },
+      credential: credentialRef('product/codex-native/default'),
+    })
+
+    await expect(adapter.login('codex-login', interaction, context)).resolves.toMatchObject({ status: 'unknown' })
+    expect(calls).toEqual(['codex --version'])
   })
 
   it('keeps library OAuth ownership behind a driver and supports explicit login/logout', async () => {

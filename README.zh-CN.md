@@ -1,17 +1,26 @@
 # DSHelm
 
-DSHelm 是面向 DeepSeek Harness（DSH）的 OmO-inspired agent distribution。它会发现机器上已有的模型、订阅、API key、本地运行时和产品 CLI，再根据当前真实可用资源生成可解释的执行拓扑。
+DSHelm 是受 OmO 启发、原生 DSH 的 distribution。它把已配置的 API key、
+provider-owned OAuth、产品状态探测和 DSH 模型能力转换成有证据、可解释的路由
+资源。它是资源发现与组合层，不是第二个 task runtime，也不是静态的角色到模型
+preset。
 
 ## 安装
 
+公开 release 的入口目标是 `dshelm init --yes`，但当前包尚未发布到 npm；已验证的
+源码工作区路径是：
+
 ```bash
-npx dshelm init --yes
-dshelm auth status
-dshelm models inspect
-dshelm doctor
+pnpm install --frozen-lockfile
+pnpm build
+node packages/cli/dist/index.js init --yes
+node packages/cli/dist/index.js auth status
+node packages/cli/dist/index.js doctor
 ```
 
-`init` 可以重复执行，会写入 `.dshelm/profile.json` 和 `.dshelm/dsh-profile/package.json`，不会自动打开浏览器登录，也不会复制其他产品的 credential 文件。登录必须显式执行：
+`init` 可以重复执行，会写入项目发现 metadata，并在
+`$DSH_HOME/profiles/dshelm` 安装官方 DSH profile；不会自动打开浏览器登录，也不
+会复制其他产品的 credential 文件。登录必须显式执行：
 
 ```bash
 dshelm auth login pi-ai/anthropic
@@ -22,7 +31,11 @@ dshelm auth login codex-native
 
 ## 发现与安全
 
-DSHelm 探测 host-managed API key、pi-ai provider-owned OAuth、产品自有 CLI 账户、DSH exact model resolution、reasoning effort、runtime capability 和可选 AgentTeams。Codex 使用已验证的顶层 `login` / `logout` 命令；没有稳定 status surface 的产品会报告 `unknown`，不会猜测已登录。
+DSHelm 当前探测已配置的 host API-key 引用、pi-ai provider-owned OAuth、少数经过版本
+门控的产品状态 surface，以及 DSH exact-model capability。Codex 和 Claude descriptor
+有版本门控；由于当前公开认证流程是交互式的，Gemini 和 Qwen 的 shell login/logout
+明确标记为 unsupported。没有稳定 status surface 的产品会报告 `unknown`，不会猜测
+已登录。通用订阅和本地 runtime discovery 仍属于 research。
 
 policy 和 trace 只保存不透明的 `CredentialRef`。DSHelm 自己管理的 OAuth fallback 位于用户级 platform config 目录并使用受限权限；产品自有 secret 仍由产品管理。
 
@@ -35,11 +48,18 @@ dshelm explain deepseek/deepseek-v4-flash
 dshelm models explain anthropic/claude-sonnet-4-5
 ```
 
-解释会标出 runtime、official、community、empirical evidence。无法观察产品 runtime 的最终模型或 request header 时，会明确标记为 product-managed。baseline 包含 DeepSeek V4 Flash/Pro、GPT-5 mini、Claude Sonnet 4.5、本地 Qwen3 和 gpt-oss 示例。软能力分数有来源、带置信度并考虑 harness 条件，不是永久角色或模型排行榜。
+解释会标出 runtime、official、community、empirical evidence 以及 soft claim 的
+claim type、置信度和 heuristic 标记。无法观察产品 runtime 的最终模型或 request
+header 时，会明确标记为 product-managed。baseline 包含 DeepSeek V4 Flash/Pro、
+GPT-5 mini、Claude Sonnet 4.5、本地 Qwen3 和 gpt-oss 示例；当前 knowledge 是
+model-global、harness-conditional 的有限证据，不是模型排行榜。
 
 ## DSH 与 OmO 组合
 
-`@dshelm/dsh` plugin 提供 `dshelm.policy` host service，并把 model knowledge snapshot 注入 live exact-model resolution。它可以与 DSH native subagent 组合，也能在安装 AgentTeams 时描述 durable backend。OmO 迁移保留 routing intent，输出 `SUPPORTED`、`MAPPED`、`LOSSY`、`UNSUPPORTED`；credential 永远不会被迁移。
+`@dshelm/dsh` plugin 提供 `dshelm.policy` host service，并把 model knowledge snapshot
+注入 live exact-model resolution。DSH-native composition 已验证；AgentTeams 集成仍是
+merge 后的 research/backend verification，不作为 v0.3 已验证路由。OmO 迁移保留 routing
+intent，输出 `SUPPORTED`、`MAPPED`、`LOSSY`、`UNSUPPORTED`；credential 永远不会被迁移。
 
 ```bash
 dshelm migrate omo --config ~/.omo/omo.jsonc

@@ -78,7 +78,13 @@ const softCapability = z.object({
   ]),
   score: z.number().min(0).max(1),
   confidence: z.number().min(0).max(1),
+  scoreBasis: z.enum(['empirical-evaluation', 'maintainer-heuristic']).default('maintainer-heuristic'),
   evidenceIds: z.array(z.string().min(1)).min(1),
+  derivation: z.object({
+    kind: z.literal('explicit'),
+    rationale: z.string().min(1),
+    inputClaimTypes: z.array(z.enum(capabilityKinds)).min(1),
+  }).optional(),
 }).strict()
 
 const adaptationHint = z.object({
@@ -97,7 +103,6 @@ const modelRecord = z.object({
   adaptationHints: z.array(adaptationHint),
   evidence: z.array(evidenceItem).min(1),
 }).strict().superRefine((record, context) => {
-  const evidenceClaims = new Set(record.evidence.map((item) => item.claimType))
   const hardClaims: readonly [keyof z.infer<typeof hardCapabilities>, CapabilityKind][] = [
     ['runtimeReady', 'runtimeReady'],
     ['protocol', 'protocol'],
@@ -115,14 +120,31 @@ const modelRecord = z.object({
     ['authMethods', 'authMethods'],
   ]
   for (const [field, claim] of hardClaims) {
-    if (record.hard[field] !== undefined && !evidenceClaims.has(claim)) {
+    if (record.hard[field] === undefined) continue
+    const matchingEvidence = record.evidence.filter((item) => item.claimType === claim)
+    if (matchingEvidence.length === 0) {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ['hard', field], message: `missing evidence for ${field}` })
+      continue
+    }
+    if (!matchingEvidence.every((item) => valuesEqual(item.value, record.hard[field]))) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['hard', field], message: `evidence value contradicts ${field}` })
     }
   }
   const evidenceIds = new Set(record.evidence.map((item) => item.id))
+  const evidenceById = new Map(record.evidence.map((item) => [item.id, item]))
   for (const [index, capability] of record.soft.entries()) {
     for (const evidenceId of capability.evidenceIds) {
       if (!evidenceIds.has(evidenceId)) context.addIssue({ code: z.ZodIssueCode.custom, path: ['soft', index, 'evidenceIds'], message: `unknown evidence id ${evidenceId}` })
+      const evidence = evidenceById.get(evidenceId)
+      if (evidence !== undefined && evidence.claimType !== capability.capability) {
+        const explicitlyDerived = capability.derivation?.inputClaimTypes.includes(evidence.claimType) === true
+        if (!explicitlyDerived) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['soft', index, 'evidenceIds'], message: `evidence ${evidenceId} claims ${evidence.claimType}, not ${capability.capability}; add an explicit derivation` })
+        }
+      }
+    }
+    if (capability.derivation !== undefined && capability.scoreBasis !== 'maintainer-heuristic') {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['soft', index, 'scoreBasis'], message: 'explicit derivations must be marked maintainer-heuristic' })
     }
   }
   for (const [index, hint] of record.adaptationHints.entries()) {
@@ -131,6 +153,10 @@ const modelRecord = z.object({
     }
   }
 })
+
+function valuesEqual(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
+}
 
 export const KnowledgeBundleSchema = z.object({
   schemaVersion: z.literal(1),

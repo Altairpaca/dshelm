@@ -114,22 +114,20 @@ jobs:
           pnpm --filter @dshelm/model-knowledge pack --pack-destination /tmp/pack >/dev/null
           pnpm --filter @dshelm/compat-omo pack --pack-destination /tmp/pack >/dev/null
           pnpm --filter dshelm pack --pack-destination /tmp/pack >/dev/null
+          mkdir -p /tmp/dsh-cli
+          npm install --prefix /tmp/dsh-cli --no-audit --no-fund @deepseek-ai/dsh@0.1.0-rc.7 >/dev/null
           cd /tmp/fresh
           npm init -y >/dev/null
           npm install --no-audit --no-fund /tmp/pack/dshelm-core-*.tgz /tmp/pack/dshelm-dsh-*.tgz /tmp/pack/dshelm-auth-*.tgz /tmp/pack/dshelm-model-knowledge-*.tgz /tmp/pack/dshelm-compat-omo-*.tgz /tmp/pack/dshelm-0.3.0-alpha.0.tgz >/dev/null
           node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
           node -e "import('@dshelm/dsh').then(m => { if (!m.DSHelmPolicyService) process.exit(1) })"
           node -e "if (!require.resolve('dshelm').endsWith('/dist/index.js')) process.exit(1)"
-          mkdir -p /tmp/fresh-journey && cd /tmp/fresh-journey
-          export HOME=/tmp/fresh-home
-          export DSHELM_CONFIG_DIR=/tmp/fresh-home/.config/dshelm
-          node /tmp/fresh/node_modules/dshelm/dist/index.js init --yes
-          test -f .dshelm/profile.json
-          test -f .dshelm/dsh-profile/package.json
-          node /tmp/fresh/node_modules/dshelm/dist/index.js auth status >/tmp/dshelm-auth-status.txt
-          node /tmp/fresh/node_modules/dshelm/dist/index.js explain deepseek/deepseek-v4-flash >/tmp/dshelm-explain.txt
-          node /tmp/fresh/node_modules/dshelm/dist/index.js uninstall --yes
-          test ! -e .dshelm/profile.json
+          bash "$GITHUB_WORKSPACE/scripts/qa-clean-install.sh" \
+            /tmp/fresh/node_modules/dshelm/dist/index.js \
+            /tmp/pack/dshelm-core-*.tgz \
+            /tmp/pack/dshelm-model-knowledge-*.tgz \
+            /tmp/pack/dshelm-dsh-*.tgz \
+            /tmp/dsh-cli/node_modules/.bin/dsh
           node "$GITHUB_WORKSPACE/scripts/verify-client-bundle.js"
 
   # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a

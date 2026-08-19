@@ -54,9 +54,8 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
         authMethods: ['api-key'],
       },
       soft: [
-        { capability: 'planning', score: 0.76, confidence: 0.58, evidenceIds: ['deepseek-flash-agentic'] },
-        { capability: 'agenticCoding', score: 0.78, confidence: 0.58, evidenceIds: ['deepseek-flash-agentic'] },
-        { capability: 'fanOutSuitability', score: 0.88, confidence: 0.62, evidenceIds: ['deepseek-flash-cost-latency'] },
+        { capability: 'agenticCoding', score: 0.78, confidence: 0.58, scoreBasis: 'maintainer-heuristic', evidenceIds: ['deepseek-flash-agentic'] },
+        { capability: 'fanOutSuitability', score: 0.88, confidence: 0.62, scoreBasis: 'maintainer-heuristic', evidenceIds: ['deepseek-flash-cost-latency'] },
       ],
       adaptationHints: [{ id: 'deepseek-flash-parallel', hint: 'Prefer bounded parallel workers and explicit tool result summaries.', evidenceIds: ['deepseek-flash-cost-latency'] }],
       evidence: [
@@ -81,9 +80,7 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
         authMethods: ['api-key'],
       },
       soft: [
-        { capability: 'planning', score: 0.86, confidence: 0.58, evidenceIds: ['deepseek-pro-agentic'] },
-        { capability: 'longHorizonCoding', score: 0.82, confidence: 0.52, evidenceIds: ['deepseek-pro-agentic'] },
-        { capability: 'review', score: 0.8, confidence: 0.5, evidenceIds: ['deepseek-pro-agentic'] },
+        { capability: 'longHorizonCoding', score: 0.82, confidence: 0.52, scoreBasis: 'maintainer-heuristic', evidenceIds: ['deepseek-pro-agentic'] },
       ],
       adaptationHints: [{ id: 'deepseek-pro-reasoning', hint: 'Use high reasoning effort for planning and verification lanes; reserve max for hard debugging.', evidenceIds: ['deepseek-pro-reasoning'] }],
       evidence: [
@@ -102,8 +99,7 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
       displayName: 'GPT-5 mini',
       hard: { protocol: 'openai-responses', streaming: true, authMethods: ['api-key'] },
       soft: [
-        { capability: 'fanOutSuitability', score: 0.84, confidence: 0.55, evidenceIds: ['openai-mini-official'] },
-        { capability: 'toolReliability', score: 0.8, confidence: 0.5, evidenceIds: ['openai-mini-official'] },
+        { capability: 'toolReliability', score: 0.8, confidence: 0.5, scoreBasis: 'maintainer-heuristic', evidenceIds: ['openai-mini-official'] },
       ],
       adaptationHints: [{ id: 'openai-mini-tools', hint: 'Prefer compact structured tool schemas and bounded output budgets.', evidenceIds: ['openai-mini-official'] }],
       evidence: [
@@ -120,9 +116,7 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
       displayName: 'Claude Sonnet 4.5',
       hard: { protocol: 'anthropic-messages', streaming: true, authMethods: ['api-key', 'library-oauth'] },
       soft: [
-        { capability: 'agenticCoding', score: 0.84, confidence: 0.62, evidenceIds: ['claude-sonnet-community'] },
-        { capability: 'planning', score: 0.82, confidence: 0.6, evidenceIds: ['claude-sonnet-community'] },
-        { capability: 'review', score: 0.83, confidence: 0.56, evidenceIds: ['claude-sonnet-community'] },
+        { capability: 'agenticCoding', score: 0.84, confidence: 0.62, scoreBasis: 'maintainer-heuristic', evidenceIds: ['claude-sonnet-community'] },
       ],
       adaptationHints: [{ id: 'claude-sonnet-review', hint: 'Use explicit acceptance criteria and independent review prompts for long coding tasks.', evidenceIds: ['claude-sonnet-community'] }],
       evidence: [
@@ -138,7 +132,7 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
       model: 'qwen3-30b',
       displayName: 'Qwen3 30B (local example)',
       hard: { protocol: 'openai-completions', localDeployment: true, openWeights: true, authMethods: ['local'] },
-      soft: [{ capability: 'fanOutSuitability', score: 0.76, confidence: 0.48, evidenceIds: ['qwen-local-card'] }],
+      soft: [{ capability: 'fanOutSuitability', score: 0.76, confidence: 0.48, scoreBasis: 'maintainer-heuristic', evidenceIds: ['qwen-local-card'] }],
       adaptationHints: [{ id: 'qwen-local-concurrency', hint: 'Keep concurrency bounded by local VRAM and inference backend throughput.', evidenceIds: ['qwen-local-card'] }],
       evidence: [
         claim('qwen-local-protocol', 'official', 'Qwen model card; protocol depends on serving backend', qwenLocal, 'protocol', 'openai-completions', 0.55, 90, 'https://huggingface.co/Qwen'),
@@ -154,7 +148,7 @@ export const BASELINE_KNOWLEDGE_BUNDLE = {
       model: 'gpt-oss:20b',
       displayName: 'gpt-oss 20B (local example)',
       hard: { protocol: 'openai-completions', localDeployment: true, openWeights: true, authMethods: ['local'] },
-      soft: [{ capability: 'fanOutSuitability', score: 0.74, confidence: 0.45, evidenceIds: ['gpt-oss-card'] }],
+      soft: [{ capability: 'fanOutSuitability', score: 0.74, confidence: 0.45, scoreBasis: 'maintainer-heuristic', evidenceIds: ['gpt-oss-card'] }],
       adaptationHints: [{ id: 'gpt-oss-local-budget', hint: 'Use small parallel batches and verify tool outputs independently on local serving.', evidenceIds: ['gpt-oss-card'] }],
       evidence: [
         claim('gpt-oss-local-protocol', 'community', 'OpenAI-compatible local serving configuration', gptOssLocal, 'protocol', 'openai-completions', 0.55, 90, 'https://github.com/openai/gpt-oss'),

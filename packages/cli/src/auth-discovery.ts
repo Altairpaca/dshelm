@@ -41,8 +41,8 @@ const PRODUCT_RESOURCES = [
 const productAuthDescriptors = {
   'codex-native': {
     product: 'ChatGPT/Codex',
-    versionRange: 'codex-cli current',
-    source: 'codex --help (top-level login/logout commands)',
+    version: { verifiedVersions: ['0.147.0'], pattern: /(?:codex-cli|codex)\s+v?(\d+\.\d+\.\d+)/i },
+    source: 'codex --help and codex app-server account endpoints (top-level login/logout)',
     verifiedAt: '2026-08-18T00:00:00Z',
     preference: 'cli',
     login: { command: 'codex', args: ['login'], interactive: true },
@@ -50,30 +50,29 @@ const productAuthDescriptors = {
   },
   'claude-native': {
     product: 'Claude Code',
-    versionRange: 'claude-code current',
+    version: { verifiedVersions: ['2.1.234'], pattern: /(?:claude(?:-code)?\s+)?v?(\d+\.\d+\.\d+)/i },
     source: 'https://docs.anthropic.com/en/docs/claude-code/overview',
     verifiedAt: '2026-08-18T00:00:00Z',
     preference: 'cli',
+    status: { command: 'claude', args: ['auth', 'status'] },
     login: { command: 'claude', args: ['auth', 'login'], interactive: true },
     logout: { command: 'claude', args: ['auth', 'logout'] },
   },
   'gemini-native': {
     product: 'Gemini CLI',
-    versionRange: 'gemini-cli current',
+    version: { verifiedVersions: ['0.55.1'], pattern: /(?:gemini(?:-cli)?\s+)?v?(\d+\.\d+\.\d+)/i },
     source: 'https://github.com/google-gemini/gemini-cli',
     verifiedAt: '2026-08-18T00:00:00Z',
     preference: 'cli',
-    login: { command: 'gemini', args: ['auth', 'login'], interactive: true },
-    logout: { command: 'gemini', args: ['auth', 'logout'] },
+    unsupportedReason: 'Gemini CLI auth is exposed through the interactive /auth flow; no verified shell login/logout command',
   },
   'qwen-native': {
     product: 'Qwen Code',
-    versionRange: 'qwen-code current',
+    version: { verifiedVersions: ['0.21.13'], pattern: /(?:qwen(?:-code)?\s+)?v?(\d+\.\d+\.\d+)/i },
     source: 'https://github.com/QwenLM/qwen-code',
     verifiedAt: '2026-08-18T00:00:00Z',
     preference: 'cli',
-    login: { command: 'qwen', args: ['auth', 'login'], interactive: true },
-    logout: { command: 'qwen', args: ['auth', 'logout'] },
+    unsupportedReason: 'Qwen Code removed the legacy qwen auth CLI; authentication is exposed through interactive /auth or daemon APIs',
   },
 } as const
 
