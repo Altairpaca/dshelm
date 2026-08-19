@@ -12,7 +12,7 @@
 </p>
 
 > [!IMPORTANT]
-> DSHelm 目前是 `0.3.0-alpha` 源码预览版，npm 包尚未发布。当前适合 DSH 插件开发者和愿意反馈早期体验的用户，不建议用于生产环境。
+> DSHelm 当前为 `0.3.0-alpha`。npm 包尚未发布，请按下面的源码步骤安装；接口和配置仍可能变化。
 
 ## DSHelm 解决什么问题
 
@@ -37,7 +37,7 @@
 | 账号发现 | Alpha | API key、provider OAuth 和部分产品登录状态，不复制产品凭据 |
 | Web 控制面板 | Alpha | Roles × Models 与最近一次调度解释 |
 | OmO 配置迁移 | 预览 | 只读分析，明确标出映射、损失和不支持项 |
-| npm 一键安装 | 发布门槛 | 尚未开放，当前只能使用下方源码预览流程 |
+| npm 安装 | 准备中 | 当前从源码安装 |
 | 桌面安装包 | 生态协作 | DSHelm 不另造桌面壳，跟随 DSH 桌面宿主的 profile/plugin 能力 |
 
 ## 从源码体验
@@ -68,8 +68,7 @@ dsh --profile dshelm
 node packages/cli/dist/index.js uninstall --yes
 ```
 
-> [!NOTE]
-> npm alpha 发布后的目标入口是 `npx dshelm init --yes`。在 npm 页面真实可用前，文档不会把它写成现有安装方式。
+> npm alpha 发布后，可以直接使用 `npx dshelm init --yes`；当前请使用上面的源码安装步骤。
 
 ## 它如何工作
 
@@ -79,9 +78,9 @@ node packages/cli/dist/index.js uninstall --yes
 
 DSHelm Core 只负责策略、配置、路由和解释；任务执行仍由 DSH 及其插件完成。详细边界见[架构说明](docs/ARCHITECTURE.md)。
 
-## 面向中国用户
+## 平台与兼容性
 
-我们优先补齐简体中文文档和故障说明、DeepSeek/Qwen/本地模型兼容状态、Windows 11 + WSL2 安装验证，以及密钥、费用、网络和数据位置的透明说明。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
+DeepSeek、Qwen、本地模型和其他 provider 的支持情况会记录在 [`compatibility.json`](compatibility.json) 及[兼容性说明](docs/ecosystem/verified-stack.zh-CN.md)中。macOS、Linux 和 Windows 11 + WSL2 都可以按源码步骤尝试；Windows 原生和桌面宿主的结果，欢迎附在安装反馈中。平台安装、凭据、费用和网络问题集中记录在[使用路线图](docs/community-roadmap.zh-CN.md)，桌面集成原则见[桌面化策略](docs/desktop.zh-CN.md)。
 
 ## 与 DSH 社区一起演进
 

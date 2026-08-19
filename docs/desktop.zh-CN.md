@@ -6,7 +6,7 @@ DSHelm 应当具备开箱即用的桌面体验，但不应创建自己的桌面�
 
 这与 DSH 的“Everything is a Plugin”方向保持一致，也避免用户面对两套会话、插件、凭据和升级机制。
 
-## 用户期望的桌面旅程
+## 桌面使用流程
 
 ```text
 下载并打开 DSH 桌面宿主
@@ -16,7 +16,7 @@ DSHelm 应当具备开箱即用的桌面体验，但不应创建自己的桌面�
   → 查看规划、执行、审核所用模型及 Resolution Trace
 ```
 
-最终体验不应要求用户理解 pnpm workspace、Cordis patch 或 bundle manifest。
+用户不需要了解 pnpm workspace、Cordis patch 或 bundle manifest；这些细节应由宿主和安装器处理。
 
 ## DSHelm 自己负责
 
