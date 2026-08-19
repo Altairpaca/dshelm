@@ -1,6 +1,6 @@
 {
-  "name": "dshelm",
-  "version": "0.1.0",
+  "name": "dshelm-workspace",
+  "version": "0.3.0-alpha.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.7.0",
@@ -12,9 +12,10 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
+    "qa:deepseek-live": "tsx scripts/qa-deepseek-live.ts",
     "bench": "tsx scripts/bench-resolver.ts",
     "qa:dsh-host": "bash scripts/qa-dsh-host.sh",
-    "doctor": "pnpm --filter @dshelm/cli doctor",
+    "doctor": "pnpm --filter dshelm doctor",
     "doctor:ts": "tsx packages/cli/src/index.ts doctor",
     "migrate:omo": "tsx packages/cli/src/index.ts migrate omo"
   },

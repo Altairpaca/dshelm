@@ -71,6 +71,14 @@ class CompAdapter extends LlmAdapter {
   }
 }
 
+class KnowledgeAdapter extends CompAdapter {
+  override providerInfo(provider: string) { return { id: provider, name: 'DeepSeek' } }
+  override listModels() { return Promise.resolve([{ provider: 'deepseek', id: 'deepseek-v4-pro', name: 'V4 Pro' }, { provider: 'deepseek', id: 'deepseek-v4-flash', name: 'V4 Flash' }]) }
+  override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+    return Promise.resolve({ provider, id: model, name: model, reasoning: { efforts: [{ id: 'high' as never, name: 'High' }] } })
+  }
+}
+
 async function composedContext() {
   const ctx = new Context()
   await ctx.plugin(LlmRuntime)
@@ -82,6 +90,7 @@ async function composedContext() {
   await ctx.plugin(SessionProjectionRegistry)
   await ctx.plugin(SubagentRuntime)
   ctx.llm.registerAdapter(['comp-test'], new CompAdapter())
+  ctx.llm.registerAdapter(['deepseek'], new KnowledgeAdapter())
   return ctx
 }
 
@@ -94,6 +103,25 @@ describe('DSHelm bundle host service (real composition)', () => {
       expect(service).toBeDefined()
       const resolved = await service.resolve({ category: 'plan' })
       expect(resolved).toMatchObject({ provider: 'comp-test', model: 'comp-pro', reasoning: 'high' })
+    } finally {
+      await fiber.dispose()
+    }
+  })
+
+  it('uses the shipped model knowledge overlay in the live composed service', async () => {
+    const ctx = await composedContext()
+    const fiber = await ctx.plugin({ name: 'dshelm', inject: dshelmInject, apply: dshelmApply }, {
+      defaults: {
+        profiles: { mixed: { id: 'mixed', candidates: [{ provider: 'deepseek', model: 'deepseek-v4-pro' }, { provider: 'deepseek', model: 'deepseek-v4-flash' }] } },
+        agents: { worker: { id: 'worker', role: 'worker', profile: 'mixed' } },
+        categories: { implement: { id: 'implement', agent: 'worker' } },
+      },
+    })
+    try {
+      const service = ctx.reflect.get('dshelm.policy') as DSHelmPolicyServiceFace
+      const resolved = await service.resolve({ category: 'implement', requirements: { needsCheapParallelism: true } })
+      expect(resolved.model).toBe('deepseek-v4-flash')
+      expect(resolved.trace.modelKnowledgeSnapshot).toBe('dshelm-v0.3-baseline-2026-08-18')
     } finally {
       await fiber.dispose()
     }

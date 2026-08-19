@@ -25,6 +25,9 @@ import {
   type ResolveRequest,
   type ResolvedAgentPolicy,
   type RuntimeCapabilities,
+  type RoutingEvidence,
+  type SoftRoutingCapability,
+  type TaskRequirements,
 } from './contracts.ts'
 
 /** One in-flight candidate evaluation. */
@@ -32,6 +35,15 @@ interface PendingCandidate {
   provider: string
   model: string
   reasoning?: string
+}
+
+interface CandidateMetadata {
+  readonly score?: number
+  readonly authReady?: boolean
+  readonly backend?: string
+  readonly harness?: string
+  readonly productManaged?: boolean
+  readonly evidence?: readonly RoutingEvidence[]
 }
 
 export async function resolvePolicy(
@@ -59,7 +71,7 @@ export async function resolvePolicy(
   }
   validateOverride(request.override)
 
-  const candidates: CandidateEvaluation[] = []
+  let candidates: CandidateEvaluation[] = []
   const fields: FieldProvenance[] = [
     { field: 'agent', source: `category.${request.category}`, value: agent.id },
     { field: 'modelProfile', source: `agent.${agent.id}`, value: profile.id },
@@ -74,6 +86,7 @@ export async function resolvePolicy(
     const evaluation = await evaluateCandidate(
       { provider: override.provider, model: override.model, ...(preferenceReasoning !== undefined ? { reasoning: preferenceReasoning } : {}) },
       runtime,
+      request.requirements,
     )
     candidates.push(evaluation)
     if (evaluation.outcome === 'selected') {
@@ -86,18 +99,42 @@ export async function resolvePolicy(
       const evaluation = await evaluateCandidate(
         { provider: candidate.provider, model: candidate.model, ...(reasoning !== undefined ? { reasoning } : {}) },
         runtime,
+        request.requirements,
       )
       candidates.push(evaluation)
-      if (evaluation.outcome === 'selected') {
+      if (request.requirements === undefined && evaluation.outcome === 'selected') {
         selected = { provider: evaluation.provider, model: evaluation.model, ...(evaluation.reasoning !== undefined ? { reasoning: evaluation.reasoning } : {}) }
         fields.push({ field: 'model', source: `modelProfile.${profile.id}`, value: evaluation.model })
         break
       }
     }
+    if (request.requirements !== undefined) {
+      const selectionIndex = bestCandidateIndex(candidates)
+      if (selectionIndex !== undefined) {
+        candidates = candidates.map((candidate, index) => index === selectionIndex
+          ? candidate
+          : candidate.outcome === 'selected' ? { ...candidate, outcome: 'eligible' } : candidate)
+        const evaluation = candidates[selectionIndex]
+        if (evaluation !== undefined) {
+          selected = { provider: evaluation.provider, model: evaluation.model, ...(evaluation.reasoning !== undefined ? { reasoning: evaluation.reasoning } : {}) }
+          fields.push({ field: 'model', source: `taskRequirements+modelProfile.${profile.id}`, value: evaluation.model })
+        }
+      }
+    }
   }
 
   if (selected === undefined) {
-    throw aggregateError({ version: 1, request, category: request.category, agent: agent.id, profile: profile.id, candidates, fields })
+    throw aggregateError({
+      version: 2,
+      request,
+      category: request.category,
+      agent: agent.id,
+      profile: profile.id,
+      candidates,
+      fields,
+      ...(request.requirements === undefined ? {} : { requirements: request.requirements }),
+      ...(runtime.knowledgeSnapshot === undefined ? {} : { modelKnowledgeSnapshot: runtime.knowledgeSnapshot }),
+    })
   }
   if (selected.reasoning !== undefined) {
     fields.push({
@@ -107,14 +144,16 @@ export async function resolvePolicy(
     })
   }
   const trace: ResolutionTrace = {
-    version: 1,
+    version: 2,
     request,
     category: request.category,
     agent: agent.id,
     profile: profile.id,
+    ...(request.requirements === undefined ? {} : { requirements: request.requirements }),
+    ...(runtime.knowledgeSnapshot === undefined ? {} : { modelKnowledgeSnapshot: runtime.knowledgeSnapshot }),
     candidates,
     fields,
-    selected,
+    selected: selectedTrace(selected, candidates),
   }
   return {
     category: request.category,
@@ -138,6 +177,7 @@ export async function resolvePolicy(
 async function evaluateCandidate(
   candidate: PendingCandidate,
   runtime: RuntimeCapabilities,
+  requirements?: TaskRequirements,
 ): Promise<CandidateEvaluation> {
   const provider = runtime.providers[candidate.provider]
   if (provider === undefined) {
@@ -173,6 +213,12 @@ async function evaluateCandidate(
         : `Exact model "${candidate.provider}/${candidate.model}" could not be resolved`,
     )
   }
+  const metadata = candidateMetadata(info, requirements)
+  if (requirements?.authConstraint === 'authenticated' && info.authReady !== true) {
+    return outcome(candidate, 'auth-unavailable', `Authentication is not ready for "${candidate.provider}/${candidate.model}"`, metadata)
+  }
+  const hardMismatch = hardRequirementMismatch(info, requirements)
+  if (hardMismatch !== undefined) return outcome(candidate, 'capability-mismatch', hardMismatch, metadata)
   if (candidate.reasoning !== undefined) {
     const efforts = info.reasoningEfforts
     if (efforts === undefined || efforts.length === 0) {
@@ -190,16 +236,86 @@ async function evaluateCandidate(
       )
     }
   }
-  return outcome(candidate, 'selected', `Exact model "${candidate.provider}/${candidate.model}" is valid`)
+  return outcome(candidate, 'selected', `Exact model "${candidate.provider}/${candidate.model}" is valid`, metadata)
 }
 
-function outcome(candidate: PendingCandidate, outcomeCode: CandidateOutcome, detail: string): CandidateEvaluation {
+function outcome(candidate: PendingCandidate, outcomeCode: CandidateOutcome, detail: string, metadata: CandidateMetadata = {}): CandidateEvaluation {
   return {
     provider: candidate.provider,
     model: candidate.model,
     ...(candidate.reasoning !== undefined ? { reasoning: candidate.reasoning } : {}),
     outcome: outcomeCode,
     detail,
+    ...metadata,
+  }
+}
+
+function bestCandidateIndex(candidates: readonly CandidateEvaluation[]): number | undefined {
+  let bestIndex: number | undefined
+  let bestScore = Number.NEGATIVE_INFINITY
+  candidates.forEach((candidate, index) => {
+    if (candidate.outcome !== 'selected') return
+    const score = candidate.score ?? 0
+    if (score > bestScore) {
+      bestIndex = index
+      bestScore = score
+    }
+  })
+  return bestIndex
+}
+
+function candidateMetadata(info: ExactModelInfo, requirements: TaskRequirements | undefined): CandidateMetadata {
+  return {
+    ...(requirements === undefined ? {} : { score: scoreRequirements(info, requirements) }),
+    ...(info.authReady === undefined ? {} : { authReady: info.authReady }),
+    ...(info.backend === undefined ? {} : { backend: info.backend }),
+    ...(info.harness === undefined ? {} : { harness: info.harness }),
+    ...(info.productManaged === undefined ? {} : { productManaged: info.productManaged }),
+    ...(info.evidence === undefined ? {} : { evidence: info.evidence }),
+  }
+}
+
+const softRequirementMap = [
+  ['needsStrongPlanning', 'strongPlanning'],
+  ['needsLongHorizonCoding', 'longHorizonCoding'],
+  ['needsCheapParallelism', 'cheapParallelism'],
+  ['needsIndependentVerification', 'independentVerification'],
+  ['needsVeryLargeContext', 'largeContextStability'],
+  ['needsFastLatency', 'fastLatency'],
+] as const satisfies readonly (readonly [keyof TaskRequirements, SoftRoutingCapability])[]
+
+function scoreRequirements(info: ExactModelInfo, requirements: TaskRequirements | undefined): number {
+  if (requirements === undefined) return 0
+  let score = 0
+  let count = 0
+  for (const [requirement, capability] of softRequirementMap) {
+    if (requirements[requirement] !== true) continue
+    score += info.softScores?.[capability] ?? 0
+    count += 1
+  }
+  return count === 0 ? 0 : score / count
+}
+
+function hardRequirementMismatch(info: ExactModelInfo, requirements: TaskRequirements | undefined): string | undefined {
+  if (requirements === undefined) return undefined
+  if (requirements.needsVision === true && info.vision !== true) return 'Required vision capability is not available'
+  if (requirements.needsStructuredOutput === true && info.structuredOutput !== true) return 'Required structured-output capability is not available'
+  if (requirements.needsLocalOnly === true && info.localDeployment !== true) return 'Required local-only execution is not available'
+  const minimumContext = requirements.minimumContextWindow
+  if (minimumContext !== undefined && (info.contextWindow === undefined || info.contextWindow < minimumContext)) return `Required context window ${minimumContext} is not available`
+  const maxCost = requirements.maxCostPerMillionTokens
+  if (maxCost !== undefined && (info.costPerMillionTokens === undefined || info.costPerMillionTokens > maxCost)) return `Required cost ceiling ${maxCost} is not satisfied`
+  if (requirements.harnessConstraint !== undefined && info.harness !== requirements.harnessConstraint) return `Required harness "${requirements.harnessConstraint}" is not available`
+  return undefined
+}
+
+function selectedTrace(selected: { readonly provider: string; readonly model: string; readonly reasoning?: string }, candidates: readonly CandidateEvaluation[]): NonNullable<ResolutionTrace['selected']> {
+  const evaluation = candidates.find((candidate) => candidate.outcome === 'selected' && candidate.provider === selected.provider && candidate.model === selected.model)
+  return {
+    ...selected,
+    ...(evaluation?.backend === undefined ? {} : { backend: evaluation.backend }),
+    ...(evaluation?.harness === undefined ? {} : { harness: evaluation.harness }),
+    ...(evaluation?.productManaged === undefined ? {} : { observability: evaluation.productManaged ? 'product-managed' : 'request-observable' }),
   }
 }
 
@@ -214,7 +330,7 @@ function aggregateError(trace: ResolutionTrace): PolicyResolutionError {
   let code: PolicyResolutionError['code']
   let message: string
   const reachedEnabled = outcomes.some((o) =>
-    o === 'model-invalid' || o === 'model-unresolved' || o === 'reasoning-unsupported' || o === 'capability-mismatch' || o === 'selected',
+    o === 'model-invalid' || o === 'model-unresolved' || o === 'reasoning-unsupported' || o === 'auth-unavailable' || o === 'capability-mismatch' || o === 'eligible' || o === 'selected',
   )
   const modelLevelFailure = outcomes.some((o) => o === 'model-invalid' || o === 'model-unresolved')
   if (only('provider-unknown')) {
@@ -223,6 +339,9 @@ function aggregateError(trace: ResolutionTrace): PolicyResolutionError {
   } else if (!reachedEnabled) {
     code = 'DISABLED_PROVIDER'
     message = `No candidate for profile "${trace.profile}" reaches an enabled provider`
+  } else if (only('auth-unavailable')) {
+    code = 'AUTH_UNAVAILABLE'
+    message = `No authenticated candidate exists for profile "${trace.profile}"`
   } else if (outcomes.some((o) => o === 'capability-mismatch') && !modelLevelFailure) {
     code = 'CAPABILITY_MISMATCH'
     message = `Runtime lacks exact-model validation for candidates of profile "${trace.profile}"`

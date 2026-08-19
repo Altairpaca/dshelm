@@ -117,7 +117,34 @@ export interface ExactModelInfo {
   readonly reasoningEfforts?: readonly string[]
   /** Adapter-configured default effort, when known. */
   readonly defaultReasoningEffort?: string
+  readonly authReady?: boolean
+  readonly backend?: string
+  readonly harness?: string
+  readonly productManaged?: boolean
+  readonly contextWindow?: number
+  readonly vision?: boolean
+  readonly structuredOutput?: boolean
+  readonly localDeployment?: boolean
+  readonly costPerMillionTokens?: number
+  readonly softScores?: Readonly<Partial<Record<SoftRoutingCapability, number>>>
+  readonly evidence?: readonly RoutingEvidence[]
 }
+
+export type RoutingEvidenceLayer = 'runtime' | 'official' | 'community' | 'empirical'
+
+export interface RoutingEvidence {
+  readonly source: string
+  readonly layer: RoutingEvidenceLayer
+  readonly confidence: number
+}
+
+export type SoftRoutingCapability =
+  | 'strongPlanning'
+  | 'longHorizonCoding'
+  | 'cheapParallelism'
+  | 'independentVerification'
+  | 'largeContextStability'
+  | 'fastLatency'
 
 /** One advisory catalog entry (visibility only — NEVER routing). */
 export interface RuntimeCatalogEntry {
@@ -144,6 +171,7 @@ export interface RuntimeProviderCapability {
 /** Immutable snapshot of runtime capabilities consumed by the resolver. */
 export interface RuntimeCapabilities {
   readonly providers: Readonly<Record<string, RuntimeProviderCapability>>
+  readonly knowledgeSnapshot?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +190,23 @@ export interface ResolveRequest {
   readonly category: string
   /** Optional explicit override (provider+model together; reasoning alone allowed). */
   readonly override?: ResolveOverride
+  readonly requirements?: TaskRequirements
+}
+
+export interface TaskRequirements {
+  readonly needsStrongPlanning?: boolean
+  readonly needsLongHorizonCoding?: boolean
+  readonly needsCheapParallelism?: boolean
+  readonly needsVision?: boolean
+  readonly needsIndependentVerification?: boolean
+  readonly needsVeryLargeContext?: boolean
+  readonly minimumContextWindow?: number
+  readonly needsFastLatency?: boolean
+  readonly needsLocalOnly?: boolean
+  readonly needsStructuredOutput?: boolean
+  readonly maxCostPerMillionTokens?: number
+  readonly authConstraint?: 'authenticated'
+  readonly harnessConstraint?: string
 }
 
 /** Structured outcome of one candidate evaluation. */
@@ -172,6 +217,8 @@ export type CandidateOutcome =
   | 'model-invalid'         // provider reported invalid exact-model metadata
   | 'model-unresolved'      // provider could not resolve the exact model
   | 'reasoning-unsupported' // requested effort unsupported by the exact model
+  | 'auth-unavailable'
+  | 'eligible'
   | 'capability-mismatch'   // runtime lacks the capability to validate this candidate
 
 /** One candidate's evaluation record (single source for errors AND the inspector). */
@@ -182,6 +229,12 @@ export interface CandidateEvaluation {
   readonly outcome: CandidateOutcome
   /** Stable human-readable detail (never an error stack). */
   readonly detail: string
+  readonly score?: number
+  readonly authReady?: boolean
+  readonly backend?: string
+  readonly harness?: string
+  readonly productManaged?: boolean
+  readonly evidence?: readonly RoutingEvidence[]
 }
 
 /** One field-level provenance entry. */
@@ -195,11 +248,13 @@ export interface FieldProvenance {
 
 /** Canonical resolution trace; the Resolution Inspector consumes this exact structure. */
 export interface ResolutionTrace {
-  readonly version: 1
+  readonly version: 1 | 2
   readonly request: Readonly<ResolveRequest>
   readonly category: string
   readonly agent: string
   readonly profile: string
+  readonly requirements?: Readonly<TaskRequirements>
+  readonly modelKnowledgeSnapshot?: string
   /** Every evaluated candidate, in profile order. */
   readonly candidates: readonly CandidateEvaluation[]
   /** Field-level provenance (agent, profile, reasoning, tools, persona, depth, ...). */
@@ -211,6 +266,9 @@ export interface ResolutionTrace {
     readonly provider: string
     readonly model: string
     readonly reasoning?: ReasoningEffort
+    readonly backend?: string
+    readonly harness?: string
+    readonly observability?: 'request-observable' | 'product-managed'
   }
 }
 
@@ -283,6 +341,7 @@ export type PolicyResolutionErrorCode =
   | 'DISABLED_PROVIDER'
   | 'UNAVAILABLE_MODEL'
   | 'UNSUPPORTED_REASONING'
+  | 'AUTH_UNAVAILABLE'
   | 'CAPABILITY_MISMATCH'
   | 'INVALID_OVERRIDE'
 

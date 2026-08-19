@@ -18,12 +18,17 @@ import type { ExactModelInfo, RuntimeCapabilities, RuntimeProviderCapability } f
 
 export type LlmLike = Pick<LlmRuntime, 'listProviders' | 'resolveModelInfo' | 'listModels'>
 
+export type DshKnowledgeLookup = {
+  readonly snapshot?: string
+  readonly lookup: (provider: string, model: string) => Omit<Partial<ExactModelInfo>, 'valid' | 'reason' | 'reasoningEfforts' | 'defaultReasoningEffort'> | undefined
+}
+
 /**
  * Build the runtime capability snapshot from a live `ctx.llm`. Provider
  * routes with a registered adapter are enabled; exact-model answers come from
  * `resolveModelInfo`.
  */
-export function createDshCapabilities(llm: LlmLike): RuntimeCapabilities {
+export function createDshCapabilities(llm: LlmLike, knowledge?: DshKnowledgeLookup): RuntimeCapabilities {
   const providers: Record<string, RuntimeProviderCapability> = {}
   for (const provider of llm.listProviders()) {
     providers[provider.id] = {
@@ -31,14 +36,16 @@ export function createDshCapabilities(llm: LlmLike): RuntimeCapabilities {
       resolveModel: async (model, signal) => {
         try {
           const info = await llm.resolveModelInfo(provider.id, model, signal)
-          return toExactModelInfo(info)
+          const runtimeInfo = toExactModelInfo(info)
+          const overlay = knowledge?.lookup(provider.id, model)
+          return overlay === undefined ? runtimeInfo : { ...overlay, ...runtimeInfo }
         } catch (error) {
           return classifyLlmError(error)
         }
       },
     }
   }
-  return { providers }
+  return { providers, ...(knowledge?.snapshot === undefined ? {} : { knowledgeSnapshot: knowledge.snapshot }) }
 }
 
 /**
@@ -73,6 +80,8 @@ function toExactModelInfo(
 ): ExactModelInfo {
   return {
     valid: true,
+    ...(info.context?.contextWindow === undefined ? {} : { contextWindow: info.context.contextWindow }),
+    ...(info.inputModalities === undefined ? {} : { vision: info.inputModalities.includes('image') }),
     ...(info.reasoning !== undefined
       ? {
         reasoningEfforts: info.reasoning.efforts.map((effort) => effort.id),
