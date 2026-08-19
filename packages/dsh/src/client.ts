@@ -36,6 +36,10 @@ export interface DSHelmClientContext {
 
 export const inject = ['dshelmPolicy'] as const
 
+function isChineseDocument(): boolean {
+  return (document.documentElement.lang || navigator.language).toLowerCase().startsWith('zh')
+}
+
 const styleText = `
   [data-dshelm-control-plane] {
     --dh-bg: #0b1020;
@@ -107,24 +111,28 @@ export function renderControlPlane(
   root.append(style)
 
   const header = document.createElement('header')
+  const zh = isChineseDocument()
   const title = document.createElement('h1')
-  title.textContent = 'DSHelm Control Plane'
+  title.textContent = zh ? 'DSHelm 调度面板' : 'DSHelm Control Plane'
   const subtitle = document.createElement('p')
-  subtitle.textContent = 'Runtime-aware policy resolution and provenance'
+  subtitle.textContent = zh ? '可解释的运行时模型调度与来源追踪' : 'Runtime-aware policy resolution and provenance'
   header.append(title, subtitle)
 
   const heading = document.createElement('h2')
-  heading.textContent = 'Roles × Models'
+  heading.textContent = zh ? '角色 × 模型' : 'Roles × Models'
   const table = document.createElement('table')
   table.dataset.dshelmMatrix = ''
-  table.innerHTML = '<thead><tr><th>Role</th><th>Provider</th><th>Model</th><th>Reasoning</th></tr></thead>'
+  table.innerHTML = zh
+    ? '<thead><tr><th>角色</th><th>服务商</th><th>模型</th><th>推理等级</th></tr></thead>'
+    : '<thead><tr><th>Role</th><th>Provider</th><th>Model</th><th>Reasoning</th></tr></thead>'
   const body = document.createElement('tbody')
   for (const role of snapshot.roles) {
     const row = document.createElement('tr')
     row.dataset.role = role.role
     row.dataset.provider = role.provider
     row.dataset.model = role.model
-    appendCell(row, role.role)
+    const localizedRole = zh ? ({ planner: '规划', worker: '执行', reviewer: '审核' } as Record<string, string>)[role.role] : undefined
+    appendCell(row, localizedRole === undefined ? role.role : `${localizedRole} · ${role.role}`)
     appendCell(row, role.provider)
     appendCell(row, role.model, true)
     appendCell(row, role.reasoning ?? 'default')
@@ -136,7 +144,7 @@ export function renderControlPlane(
   inspector.dataset.dshelmInspector = ''
   inspector.open = true
   const summary = document.createElement('summary')
-  summary.textContent = `Resolution Inspector · ${snapshot.inspector.request}`
+  summary.textContent = `${zh ? '决策解释' : 'Resolution Inspector'} · ${snapshot.inspector.request}`
   const details = document.createElement('ol')
   for (const entry of snapshot.inspector.trace) {
     const item = document.createElement('li')

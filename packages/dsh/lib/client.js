@@ -71,8 +71,36 @@ window.__ModuleLoader__.load({
 			borderTop: "1px solid #1e293b",
 			padding: "5px 6px"
 		};
-		function RolesTable({ snapshot }) {
-			if (snapshot.roles.length === 0) return (0, react_jsx_runtime.jsx)("p", { children: "No delegations recorded yet." });
+		function labels() {
+			if ((document.documentElement.lang || navigator.language).toLowerCase().startsWith("zh")) return {
+				title: "DSHelm 调度面板",
+				waiting: "正在等待运行时数据...",
+				empty: "当前会话还没有调度记录。",
+				role: "角色",
+				provider: "服务商",
+				model: "模型",
+				reasoning: "推理等级",
+				inspector: "决策解释",
+				knownRoles: {
+					planner: "规划",
+					worker: "执行",
+					reviewer: "审核"
+				}
+			};
+			return {
+				title: "DSHelm Control Plane",
+				waiting: "Waiting for host projection...",
+				empty: "No delegations recorded yet.",
+				role: "Role",
+				provider: "Provider",
+				model: "Model",
+				reasoning: "Reasoning",
+				inspector: "Resolution Inspector",
+				knownRoles: {}
+			};
+		}
+		function RolesTable({ snapshot, copy }) {
+			if (snapshot.roles.length === 0) return (0, react_jsx_runtime.jsx)("p", { children: copy.empty });
 			return (0, react_jsx_runtime.jsxs)("table", {
 				style: {
 					width: "100%",
@@ -81,24 +109,24 @@ window.__ModuleLoader__.load({
 				children: [(0, react_jsx_runtime.jsx)("thead", { children: (0, react_jsx_runtime.jsxs)("tr", { children: [
 					(0, react_jsx_runtime.jsx)("th", {
 						style: thStyle,
-						children: "Role"
+						children: copy.role
 					}),
 					(0, react_jsx_runtime.jsx)("th", {
 						style: thStyle,
-						children: "Provider"
+						children: copy.provider
 					}),
 					(0, react_jsx_runtime.jsx)("th", {
 						style: thStyle,
-						children: "Model"
+						children: copy.model
 					}),
 					(0, react_jsx_runtime.jsx)("th", {
 						style: thStyle,
-						children: "Reasoning"
+						children: copy.reasoning
 					})
 				] }) }), (0, react_jsx_runtime.jsx)("tbody", { children: snapshot.roles.map((row, index) => (0, react_jsx_runtime.jsxs)("tr", { children: [
 					(0, react_jsx_runtime.jsx)("td", {
 						style: tdStyle,
-						children: row.role
+						children: copy.knownRoles[row.role] === void 0 ? row.role : `${copy.knownRoles[row.role]} · ${row.role}`
 					}),
 					(0, react_jsx_runtime.jsx)("td", {
 						style: tdStyle,
@@ -115,10 +143,14 @@ window.__ModuleLoader__.load({
 				] }, index)) })]
 			});
 		}
-		function Inspector({ snapshot }) {
+		function Inspector({ snapshot, copy }) {
 			return (0, react_jsx_runtime.jsxs)("details", {
 				open: true,
-				children: [(0, react_jsx_runtime.jsxs)("summary", { children: ["Resolution Inspector · ", snapshot.inspector.request] }), (0, react_jsx_runtime.jsx)("ol", {
+				children: [(0, react_jsx_runtime.jsxs)("summary", { children: [
+					copy.inspector,
+					" · ",
+					snapshot.inspector.request
+				] }), (0, react_jsx_runtime.jsx)("ol", {
 					style: {
 						margin: "8px 0 0",
 						paddingLeft: "18px",
@@ -140,6 +172,7 @@ window.__ModuleLoader__.load({
 		}
 		function ControlPlanePanel({ sessions }) {
 			const snapshot = useControlPlane(sessions);
+			const copy = labels();
 			return (0, react_jsx_runtime.jsxs)("aside", {
 				"data-dshelm-control-plane": true,
 				style: panelStyle,
@@ -148,8 +181,14 @@ window.__ModuleLoader__.load({
 						margin: "0 0 8px",
 						fontSize: "13px"
 					},
-					children: "DSHelm Control Plane"
-				}), snapshot === void 0 ? (0, react_jsx_runtime.jsx)("p", { children: "Waiting for host projection…" }) : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(RolesTable, { snapshot }), (0, react_jsx_runtime.jsx)(Inspector, { snapshot })] })]
+					children: copy.title
+				}), snapshot === void 0 ? (0, react_jsx_runtime.jsx)("p", { children: copy.waiting }) : (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [(0, react_jsx_runtime.jsx)(RolesTable, {
+					snapshot,
+					copy
+				}), (0, react_jsx_runtime.jsx)(Inspector, {
+					snapshot,
+					copy
+				})] })]
 			});
 		}
 		function apply(ctx) {

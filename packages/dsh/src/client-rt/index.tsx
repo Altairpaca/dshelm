@@ -78,22 +78,62 @@ const thStyle: Record<string, string> = {
 }
 const tdStyle: Record<string, string> = { borderTop: '1px solid #1e293b', padding: '5px 6px' }
 
-function RolesTable({ snapshot }: { snapshot: ControlPlaneProjectionValue }): ReactNode {
-  if (snapshot.roles.length === 0) return <p>No delegations recorded yet.</p>
+type Labels = {
+  readonly title: string
+  readonly waiting: string
+  readonly empty: string
+  readonly role: string
+  readonly provider: string
+  readonly model: string
+  readonly reasoning: string
+  readonly inspector: string
+  readonly knownRoles: Readonly<Record<string, string>>
+}
+
+function labels(): Labels {
+  const language = document.documentElement.lang || navigator.language
+  if (language.toLowerCase().startsWith('zh')) {
+    return {
+      title: 'DSHelm 调度面板',
+      waiting: '正在等待运行时数据...',
+      empty: '当前会话还没有调度记录。',
+      role: '角色',
+      provider: '服务商',
+      model: '模型',
+      reasoning: '推理等级',
+      inspector: '决策解释',
+      knownRoles: { planner: '规划', worker: '执行', reviewer: '审核' },
+    }
+  }
+  return {
+    title: 'DSHelm Control Plane',
+    waiting: 'Waiting for host projection...',
+    empty: 'No delegations recorded yet.',
+    role: 'Role',
+    provider: 'Provider',
+    model: 'Model',
+    reasoning: 'Reasoning',
+    inspector: 'Resolution Inspector',
+    knownRoles: {},
+  }
+}
+
+function RolesTable({ snapshot, copy }: { snapshot: ControlPlaneProjectionValue; copy: Labels }): ReactNode {
+  if (snapshot.roles.length === 0) return <p>{copy.empty}</p>
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
       <thead>
         <tr>
-          <th style={thStyle}>Role</th>
-          <th style={thStyle}>Provider</th>
-          <th style={thStyle}>Model</th>
-          <th style={thStyle}>Reasoning</th>
+          <th style={thStyle}>{copy.role}</th>
+          <th style={thStyle}>{copy.provider}</th>
+          <th style={thStyle}>{copy.model}</th>
+          <th style={thStyle}>{copy.reasoning}</th>
         </tr>
       </thead>
       <tbody>
         {snapshot.roles.map((row, index) => (
           <tr key={index}>
-            <td style={tdStyle}>{row.role}</td>
+            <td style={tdStyle}>{copy.knownRoles[row.role] === undefined ? row.role : `${copy.knownRoles[row.role]} · ${row.role}`}</td>
             <td style={tdStyle}>{row.provider}</td>
             <td style={tdStyle}><code>{row.model}</code></td>
             <td style={tdStyle}>{row.reasoning ?? 'default'}</td>
@@ -104,10 +144,10 @@ function RolesTable({ snapshot }: { snapshot: ControlPlaneProjectionValue }): Re
   )
 }
 
-function Inspector({ snapshot }: { snapshot: ControlPlaneProjectionValue }): ReactNode {
+function Inspector({ snapshot, copy }: { snapshot: ControlPlaneProjectionValue; copy: Labels }): ReactNode {
   return (
     <details open>
-      <summary>Resolution Inspector · {snapshot.inspector.request}</summary>
+      <summary>{copy.inspector} · {snapshot.inspector.request}</summary>
       <ol style={{ margin: '8px 0 0', paddingLeft: '18px', color: '#94a3b8' }}>
         {snapshot.inspector.trace.fields.map((field, index) => (
           <li key={index}>
@@ -121,15 +161,16 @@ function Inspector({ snapshot }: { snapshot: ControlPlaneProjectionValue }): Rea
 
 function ControlPlanePanel({ sessions }: { sessions: ClientContext['sessions'] }): ReactNode {
   const snapshot = useControlPlane(sessions)
+  const copy = labels()
   return (
     <aside data-dshelm-control-plane style={panelStyle}>
-      <h1 style={{ margin: '0 0 8px', fontSize: '13px' }}>DSHelm Control Plane</h1>
+      <h1 style={{ margin: '0 0 8px', fontSize: '13px' }}>{copy.title}</h1>
       {snapshot === undefined
-        ? <p>Waiting for host projection…</p>
+        ? <p>{copy.waiting}</p>
         : (
           <>
-            <RolesTable snapshot={snapshot} />
-            <Inspector snapshot={snapshot} />
+            <RolesTable snapshot={snapshot} copy={copy} />
+            <Inspector snapshot={snapshot} copy={copy} />
           </>
         )}
     </aside>

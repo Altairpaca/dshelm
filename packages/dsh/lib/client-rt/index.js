@@ -68,19 +68,47 @@ const thStyle = {
     textTransform: 'uppercase',
 };
 const tdStyle = { borderTop: '1px solid #1e293b', padding: '5px 6px' };
-function RolesTable({ snapshot }) {
-    if (snapshot.roles.length === 0)
-        return _jsx("p", { children: "No delegations recorded yet." });
-    return (_jsxs("table", { style: { width: '100%', borderCollapse: 'collapse' }, children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { style: thStyle, children: "Role" }), _jsx("th", { style: thStyle, children: "Provider" }), _jsx("th", { style: thStyle, children: "Model" }), _jsx("th", { style: thStyle, children: "Reasoning" })] }) }), _jsx("tbody", { children: snapshot.roles.map((row, index) => (_jsxs("tr", { children: [_jsx("td", { style: tdStyle, children: row.role }), _jsx("td", { style: tdStyle, children: row.provider }), _jsx("td", { style: tdStyle, children: _jsx("code", { children: row.model }) }), _jsx("td", { style: tdStyle, children: row.reasoning ?? 'default' })] }, index))) })] }));
+function labels() {
+    const language = document.documentElement.lang || navigator.language;
+    if (language.toLowerCase().startsWith('zh')) {
+        return {
+            title: 'DSHelm 调度面板',
+            waiting: '正在等待运行时数据...',
+            empty: '当前会话还没有调度记录。',
+            role: '角色',
+            provider: '服务商',
+            model: '模型',
+            reasoning: '推理等级',
+            inspector: '决策解释',
+            knownRoles: { planner: '规划', worker: '执行', reviewer: '审核' },
+        };
+    }
+    return {
+        title: 'DSHelm Control Plane',
+        waiting: 'Waiting for host projection...',
+        empty: 'No delegations recorded yet.',
+        role: 'Role',
+        provider: 'Provider',
+        model: 'Model',
+        reasoning: 'Reasoning',
+        inspector: 'Resolution Inspector',
+        knownRoles: {},
+    };
 }
-function Inspector({ snapshot }) {
-    return (_jsxs("details", { open: true, children: [_jsxs("summary", { children: ["Resolution Inspector \u00B7 ", snapshot.inspector.request] }), _jsx("ol", { style: { margin: '8px 0 0', paddingLeft: '18px', color: '#94a3b8' }, children: snapshot.inspector.trace.fields.map((field, index) => (_jsxs("li", { children: [_jsx("strong", { style: { color: '#e2e8f0' }, children: field.field }), " = ", _jsx("code", { children: field.value }), " (", field.source, ")"] }, index))) })] }));
+function RolesTable({ snapshot, copy }) {
+    if (snapshot.roles.length === 0)
+        return _jsx("p", { children: copy.empty });
+    return (_jsxs("table", { style: { width: '100%', borderCollapse: 'collapse' }, children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { style: thStyle, children: copy.role }), _jsx("th", { style: thStyle, children: copy.provider }), _jsx("th", { style: thStyle, children: copy.model }), _jsx("th", { style: thStyle, children: copy.reasoning })] }) }), _jsx("tbody", { children: snapshot.roles.map((row, index) => (_jsxs("tr", { children: [_jsx("td", { style: tdStyle, children: copy.knownRoles[row.role] === undefined ? row.role : `${copy.knownRoles[row.role]} · ${row.role}` }), _jsx("td", { style: tdStyle, children: row.provider }), _jsx("td", { style: tdStyle, children: _jsx("code", { children: row.model }) }), _jsx("td", { style: tdStyle, children: row.reasoning ?? 'default' })] }, index))) })] }));
+}
+function Inspector({ snapshot, copy }) {
+    return (_jsxs("details", { open: true, children: [_jsxs("summary", { children: [copy.inspector, " \u00B7 ", snapshot.inspector.request] }), _jsx("ol", { style: { margin: '8px 0 0', paddingLeft: '18px', color: '#94a3b8' }, children: snapshot.inspector.trace.fields.map((field, index) => (_jsxs("li", { children: [_jsx("strong", { style: { color: '#e2e8f0' }, children: field.field }), " = ", _jsx("code", { children: field.value }), " (", field.source, ")"] }, index))) })] }));
 }
 function ControlPlanePanel({ sessions }) {
     const snapshot = useControlPlane(sessions);
-    return (_jsxs("aside", { "data-dshelm-control-plane": true, style: panelStyle, children: [_jsx("h1", { style: { margin: '0 0 8px', fontSize: '13px' }, children: "DSHelm Control Plane" }), snapshot === undefined
-                ? _jsx("p", { children: "Waiting for host projection\u2026" })
-                : (_jsxs(_Fragment, { children: [_jsx(RolesTable, { snapshot: snapshot }), _jsx(Inspector, { snapshot: snapshot })] }))] }));
+    const copy = labels();
+    return (_jsxs("aside", { "data-dshelm-control-plane": true, style: panelStyle, children: [_jsx("h1", { style: { margin: '0 0 8px', fontSize: '13px' }, children: copy.title }), snapshot === undefined
+                ? _jsx("p", { children: copy.waiting })
+                : (_jsxs(_Fragment, { children: [_jsx(RolesTable, { snapshot: snapshot, copy: copy }), _jsx(Inspector, { snapshot: snapshot, copy: copy })] }))] }));
 }
 export function apply(ctx) {
     const host = document.createElement('aside');

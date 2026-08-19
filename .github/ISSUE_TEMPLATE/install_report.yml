@@ -1,0 +1,54 @@
+name: 安装反馈 / Installation report
+description: 记录成功或失败的真实安装过程，帮助完善平台兼容矩阵
+title: "[安装]: "
+labels: ["installation", "community-evidence"]
+body:
+  - type: markdown
+    attributes:
+      value: 请勿粘贴 API key、token、cookie、完整用户目录或私人仓库名。成功记录和失败记录同样有价值。English reports are welcome.
+  - type: dropdown
+    id: result
+    attributes:
+      label: 安装结果
+      options:
+        - 成功并启动 DSH profile
+        - 安装成功但无法启动
+        - 安装失败
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: 系统与架构
+      placeholder: Windows 11 + WSL2 / macOS 15 arm64 / Ubuntu 24.04 x64
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Node、pnpm、DSH、DSHelm 版本
+      placeholder: Node 22.19.0; pnpm 11.7.0; DSH rc.7; DSHelm commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: 执行步骤
+      description: 请粘贴从干净环境开始的实际命令，删除敏感路径。
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: 结果或错误
+      description: 建议包含 doctor 输出和第一条失败信息，并确认已经移除凭据。
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: 隐私确认
+      options:
+        - label: 我已移除凭据、token、cookie 和私人路径
+          required: true
