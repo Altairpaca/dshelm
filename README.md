@@ -1,81 +1,106 @@
-# DSHelm
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="DSHelm - DeepSeek Harness 的可解释多模型调度层" width="100%">
+</p>
 
-DSHelm is an OmO-inspired, DSH-native distribution. It turns configured API keys,
-provider-owned OAuth, product status probes, and DSH model capabilities into
-evidence-backed, explainable routing resources. It is a resource discovery and
-composition layer, not a second task runtime or a static role-to-model preset.
+<p align="center"><a href="README.en.md">English</a> · 简体中文</p>
 
-## Install
+<p align="center">
+  <a href="https://github.com/Altairpaca/dshelm/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Altairpaca/dshelm/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-0f766e"></a>
+  <a href="https://github.com/topics/dsh-plugin"><img alt="DSH plugin" src="https://img.shields.io/badge/DeepSeek_Harness-plugin-0891b2"></a>
+  <img alt="status alpha" src="https://img.shields.io/badge/status-alpha-f97360">
+</p>
 
-For a published release, the intended entry point is `dshelm init --yes`. The
-package is not yet published to npm; the verified source checkout path is:
+> [!IMPORTANT]
+> DSHelm 目前是 `0.3.0-alpha` 源码预览版，npm 包尚未发布。当前适合 DSH 插件开发者和愿意反馈早期体验的用户，不建议用于生产环境。
+
+## DSHelm 解决什么问题
+
+当一个任务同时需要强规划、低成本并行执行和独立审核时，固定使用一个模型往往不是最合适的选择。DSHelm 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 增加一层可解释的调度能力：
+
+- **按能力选择模型**：先检查运行时、认证、上下文和成本等硬条件，再对候选模型排序。
+- **让每次选择可追溯**：展示角色、模型、推理等级、覆盖来源和候选淘汰原因。
+- **复用 DSH 生态**：使用 DSH 官方扩展接口，不复制会话、工具、工作流或桌面运行时。
+- **尊重用户配置**：项目和请求级设置始终可以覆盖 DSHelm 的建议。
+
+一句话概括：**让规划、执行和审核使用合适的模型，并告诉你为什么。**
+
+<p align="center"><img src="docs/assets/control-plane.png" alt="DSHelm 控制面板展示 planner、worker 和 reviewer 的模型路由与 Resolution Trace" width="92%"></p>
+
+## 当前可以体验
+
+| 能力 | 当前状态 | 你能看到什么 |
+| --- | --- | --- |
+| DSH 原生组合 | 已验证 | 独立 `dshelm` profile 和 `@dshelm/dsh` bundle |
+| 模型路由 | Alpha | 硬条件过滤、证据评分、用户策略覆盖 |
+| Resolution Trace | Alpha | 每个有效字段的来源和候选决策 |
+| 账号发现 | Alpha | API key、provider OAuth 和部分产品登录状态，不复制产品凭据 |
+| Web 控制面板 | Alpha | Roles × Models 与最近一次调度解释 |
+| OmO 配置迁移 | 预览 | 只读分析，明确标出映射、损失和不支持项 |
+| npm 一键安装 | 发布门槛 | 尚未开放，当前只能使用下方源码预览流程 |
+| 桌面安装包 | 生态协作 | DSHelm 不另造桌面壳，跟随 DSH 桌面宿主的 profile/plugin 能力 |
+
+## 从源码体验
+
+环境要求：Node.js `>=22.19.0`、pnpm `11.7.0`、可在 `PATH` 中调用的 DSH CLI。当前验证版本见 [`compatibility.json`](compatibility.json)。macOS、Linux 或 Windows 11 + WSL2 均可尝试，Windows 原生体验仍待社区验证。
 
 ```bash
+git clone https://github.com/Altairpaca/dshelm.git
+cd dshelm
+corepack enable
 pnpm install --frozen-lockfile
-pnpm build
-node packages/cli/dist/index.js init --yes
-node packages/cli/dist/index.js auth status
+pnpm preview:init
+```
+
+`preview:init` 会构建本地包，并把源码预览安装到 `$DSH_HOME/profiles/dshelm`。它不会自动登录，也不会复制 Codex、Claude 等产品的凭据。
+
+```bash
+dsh --profile dshelm --dump-config
 node packages/cli/dist/index.js doctor
+node packages/cli/dist/index.js auth status
+node packages/cli/dist/index.js explain deepseek/deepseek-v4-flash
+dsh --profile dshelm
 ```
 
-`init` is idempotent. It writes project discovery metadata and installs the
-official DSH profile at `$DSH_HOME/profiles/dshelm`; it never starts a browser
-login or copies another product's credential files. Login is explicit:
+卸载会移除项目发现信息和 `dshelm` profile，默认保留凭据：
 
 ```bash
-dshelm auth login pi-ai/anthropic
-dshelm auth login codex-native
+node packages/cli/dist/index.js uninstall --yes
 ```
 
-The public package is `dshelm`; workspace packages remain available under `@dshelm/*` for DSH/plugin composition.
+> [!NOTE]
+> npm alpha 发布后的目标入口是 `npx dshelm init --yes`。在 npm 页面真实可用前，文档不会把它写成现有安装方式。
 
-## Discovery and security
+## 它如何工作
 
-DSHelm currently probes configured host API-key references, provider-owned pi-ai
-OAuth, selected version-gated product status surfaces, and DSH exact-model
-capabilities. Codex and Claude descriptors are version-gated; Gemini and Qwen
-shell login/logout are intentionally unsupported because their current public
-auth flow is interactive. Products without a verified status surface are
-reported as `unknown`, never guessed as authenticated. Generic subscription and
-local-runtime discovery remain research work.
-
-Only opaque `CredentialRef` values enter policy and traces. DSHelm-managed OAuth fallback storage is user-scoped under the platform config directory with restrictive permissions. Product-managed secrets remain with the product.
-
-## Explainable routing
-
-Routing is capability-driven. A task can request strong planning, cheap parallelism, long-horizon coding, independent verification, large context, local-only execution, structured output, a cost ceiling, or a harness constraint. Hard runtime requirements filter candidates first; evidence-backed model knowledge scores eligible resources; user policy remains the final override.
-
-```bash
-dshelm explain deepseek/deepseek-v4-flash
-dshelm models explain anthropic/claude-sonnet-4-5
+```text
+任务需求 → 运行时与认证硬条件 → 模型能力与证据评分 → 用户/项目/请求策略覆盖 → DSH 执行 + Resolution Trace
 ```
 
-Explanations identify runtime, official, community, and empirical evidence. Product-managed execution is labeled when its final model or request headers cannot be observed. The baseline includes DeepSeek V4 Flash/Pro, GPT-5 mini, Claude Sonnet 4.5, local Qwen3, and gpt-oss examples. Soft scores are source-linked, confidence-weighted maintainer heuristics; the current bundle is model-global and only conditionally informative across harnesses, not a permanent role map or leaderboard.
+DSHelm Core 只负责策略、配置、路由和解释；任务执行仍由 DSH 及其插件完成。详细边界见[架构说明](docs/ARCHITECTURE.md)。
 
-## DSH and OmO composition
+## 面向中国用户
 
-The `@dshelm/dsh` plugin provides the `dshelm.policy` host service and injects
-the model knowledge snapshot into live exact-model resolution. DSH-native
-composition is verified; AgentTeams integration is a deferred research/backend
-verification item and is not claimed as a verified v0.3 route. OmO migration
-preserves routing intent and emits `SUPPORTED`, `MAPPED`, `LOSSY`, or
-`UNSUPPORTED`; credentials are never migrated.
+我们优先补齐简体中文文档和故障说明、DeepSeek/Qwen/本地模型兼容状态、Windows 11 + WSL2 安装验证，以及密钥、费用、网络和数据位置的透明说明。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
 
-```bash
-dshelm migrate omo --config ~/.omo/omo.jsonc
-```
+## 与 DSH 社区一起演进
 
-## Verification
+DSHelm 是 DSH 生态的一部分，不是 DSH 的替代品。项目会优先在官方 Discussion 中讨论公共接口和可复用契约：
 
-```bash
-pnpm install --frozen-lockfile
-pnpm typecheck
-pnpm test
-pnpm build
-```
+- [模型规划与执行切换 #3297](https://github.com/deepseek-ai/deepseek-harness/discussions/3297)
+- [DSH 桌面宿主 #3118](https://github.com/deepseek-ai/deepseek-harness/discussions/3118)
+- [`dsh doctor` 社区契约 #1719](https://github.com/deepseek-ai/deepseek-harness/discussions/1719)
+- [安全的 CLI provider 与 fallback #3283](https://github.com/deepseek-ai/deepseek-harness/discussions/3283)
 
-Credentialed DeepSeek acceptance is opt-in and gated to `Asia/Shanghai 02:00–08:00` by `pnpm qa:deepseek-live`. Outside that window the lane reports `SKIPPED` without making a request.
+欢迎提交一个真实任务、一次安装记录、一个路由结果，或 Windows、WSL2、本地模型和国内 provider 的验证结果。请使用 [GitHub Issues](https://github.com/Altairpaca/dshelm/issues) 报告可复现问题；涉及 DSH 公共能力的讨论会同步回对应的官方 Discussion。
 
-Current package and DSH compatibility facts live in [`compatibility.json`](compatibility.json) and the bilingual v0.3 contract: [English](docs/decisions/v0.3-auth-model-orchestration.md), [简体中文](docs/decisions/v0.3-auth-model-orchestration.zh.md), [中文 README](README.zh-CN.md).
+## 安全与事实边界
 
-Apache License 2.0. DSHelm is independent and is not affiliated with DeepSeek or any referenced vendor.
+- 只有不透明的 `CredentialRef` 会进入策略和 trace；产品自有 secret 仍由产品管理。
+- 无法可靠确认的认证状态会显示为 `unknown`，不会猜测为已登录。
+- 模型软评分是带来源和置信度的维护者启发式，不是模型排行榜。
+- DSHelm 不隶属于 DeepSeek，也不代表文中提到的模型或厂商。
+
+开发环境、测试命令和贡献边界见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。中英文 Issue 和 PR 都欢迎。
+
+Apache License 2.0。

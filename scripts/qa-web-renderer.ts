@@ -11,6 +11,7 @@ const args = new Map(
 )
 const profile = args.get('profile') ?? 'dshelm-v01'
 const targetUrl = args.get('url') ?? 'http://127.0.0.1:19876'
+const publishAssets = args.get('publish-assets') === 'true'
 const parsedUrl = parse(targetUrl)
 const host = parsedUrl.hostname ?? '127.0.0.1'
 const port = Number(parsedUrl.port ?? 19876)
@@ -42,7 +43,7 @@ const actions: string[] = [
 ]
 const clientScript = await readFile('packages/dsh/dist/client.js', 'utf8')
 const html = `<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DSHelm QA</title></head>
   <body>
     <main id="mount"></main>
@@ -83,6 +84,8 @@ try {
   await desktop.locator('[data-dshelm-matrix]').waitFor()
   const desktopRows = await desktop.locator('[data-dshelm-matrix] tbody tr').count()
   const desktopInspector = await desktop.locator('[data-dshelm-inspector]').isVisible()
+  const localizedTitle = await desktop.locator('[data-dshelm-control-plane] h1').textContent()
+  const localizedFirstRole = await desktop.locator('[data-dshelm-matrix] tbody tr').first().locator('td').first().textContent()
   const desktopModels = await desktop.locator('[data-dshelm-matrix] tbody tr').evaluateAll(
     rows => rows.map(row => ({
       role: row.getAttribute('data-role'),
@@ -90,8 +93,8 @@ try {
       model: row.getAttribute('data-model'),
     })),
   )
-  if (desktopRows !== 3 || !desktopInspector) {
-    throw new Error(`desktop assertions failed: rows=${desktopRows}, inspector=${desktopInspector}`)
+  if (desktopRows !== 3 || !desktopInspector || localizedTitle !== 'DSHelm 调度面板' || localizedFirstRole !== '规划 · planner') {
+    throw new Error(`desktop assertions failed: rows=${desktopRows}, inspector=${desktopInspector}, title=${localizedTitle}, firstRole=${localizedFirstRole}`)
   }
   const expectedModels = snapshot.roles.map(({ role, provider, model }) => ({
     role,
@@ -102,7 +105,12 @@ try {
     throw new Error(`desktop matrix mismatch: ${JSON.stringify(desktopModels)}`)
   }
   actions.push(`desktop rows=${desktopRows} inspector=${desktopInspector}`)
-  await desktop.screenshot({ path: `${evidenceDir}/desktop.png`, fullPage: true })
+  const controlPlane = desktop.locator('[data-dshelm-control-plane]')
+  await controlPlane.screenshot({ path: `${evidenceDir}/desktop.png` })
+  if (publishAssets) {
+    await mkdir('docs/assets', { recursive: true })
+    await controlPlane.screenshot({ path: 'docs/assets/control-plane.png' })
+  }
   await desktop.close()
 
   const narrow = await browser.newPage({ viewport: { width: 390, height: 844 } })
@@ -116,7 +124,7 @@ try {
     throw new Error(`narrow assertions failed: width=${narrowWidth}, traceItems=${traceItems}`)
   }
   actions.push(`narrow width=${narrowWidth} traceItems=${traceItems}`)
-  await narrow.screenshot({ path: `${evidenceDir}/narrow.png`, fullPage: true })
+  await narrow.locator('[data-dshelm-control-plane]').screenshot({ path: `${evidenceDir}/narrow.png` })
   await narrow.close()
   passed = true
 } finally {

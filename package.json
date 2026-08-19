@@ -9,6 +9,8 @@
   },
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "preview:init": "pnpm build && bash scripts/install-source-preview.sh",
+    "docs:check": "node scripts/check-community-docs.mjs",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",

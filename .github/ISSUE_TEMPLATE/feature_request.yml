@@ -1,29 +1,29 @@
-name: Feature request
-description: Propose a policy, routing, orchestration, UI, or compatibility capability
-title: "[Feature]: "
+name: 功能建议 / Feature request
+description: 提议策略、路由、界面或兼容能力，中英文均可
+title: "[建议]: "
 labels: ["enhancement"]
 body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: What agent/harness problem are you trying to solve?
+      label: 要解决的问题
+      description: 你遇到了什么真实的 agent / harness 问题？
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed behavior
-      description: Describe the smallest useful behavior or policy primitive.
+      label: 期望行为
+      description: 描述最小但有用的结果，而不只是实现方案。
     validations:
       required: true
   - type: textarea
     id: dsh-boundary
     attributes:
-      label: DSH integration boundary
-      description: Which DeepSeek Harness capability should DSHelm configure or compose rather than reimplement?
+      label: DSH 集成边界
+      description: DSHelm 应该组合哪个 DSH 能力，而不是重新实现它？
   - type: textarea
     id: alternatives
     attributes:
-      label: Alternatives considered
-      description: Include existing DSH plugins or harness patterns that already solve part of the problem.
+      label: 已考虑的替代方案
+      description: 请列出已经解决部分问题的 DSH 插件或现有模式。

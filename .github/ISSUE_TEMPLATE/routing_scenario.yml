@@ -1,0 +1,37 @@
+name: 路由场景 / Routing scenario
+description: 提交一个真实任务，帮助验证规划、执行和审核应如何选择模型
+title: "[场景]: "
+labels: ["routing-scenario", "community-evidence"]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: 真实任务
+      description: 描述目标、代码库规模和交付要求，不要提交私人源码。
+    validations:
+      required: true
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 硬约束
+      description: 例如本地执行、成本上限、大上下文、结构化输出、指定 provider。
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望的分工
+      description: 哪个模型负责规划、并行执行和审核？为什么？
+  - type: textarea
+    id: actual
+    attributes:
+      label: DSHelm 的实际结果
+      description: 如果已经运行，请附上脱敏后的 Resolution Trace 或截图。
+  - type: dropdown
+    id: permission
+    attributes:
+      label: 是否允许作为公开案例引用
+      options:
+        - 可以，引用时标注我的 GitHub 用户名
+        - 可以，但请匿名
+        - 不可以，仅用于问题分析
+    validations:
+      required: true
