@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">DSHelm routing flow</title>
+  <desc id="desc">Task requirements pass through hard runtime gates, capability evidence, policy overrides, role-specific model selection, DeepSeek Harness execution, and an observable Resolution Trace.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0f1c"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.5" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#64748b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="390" rx="20" fill="url(#bg)"/>
+
+  <g font-family="Inter,ui-sans-serif,system-ui,sans-serif">
+    <text x="48" y="48" fill="#f8fafc" font-size="24" font-weight="720">One task, explicit routing decisions</text>
+    <text x="48" y="75" fill="#94a3b8" font-size="14">DSHelm owns policy and explanation. DeepSeek Harness owns execution.</text>
+
+    <!-- top pipeline -->
+    <g transform="translate(48 108)">
+      <g>
+        <rect width="170" height="74" rx="13" fill="#101b2b" stroke="#334155"/>
+        <text x="18" y="28" fill="#e2e8f0" font-size="13" font-weight="680">TASK REQUIREMENTS</text>
+        <text x="18" y="50" fill="#94a3b8" font-size="11">latency · cost · context</text>
+        <text x="18" y="65" fill="#94a3b8" font-size="11">planning · verification</text>
+      </g>
+      <path d="M178 37h38" stroke="#64748b" stroke-width="1.7" marker-end="url(#arrow)"/>
+      <g transform="translate(226)">
+        <rect width="170" height="74" rx="13" fill="#0d202d" stroke="#155e75"/>
+        <text x="18" y="28" fill="#7dd3fc" font-size="13" font-weight="680">HARD GATES</text>
+        <text x="18" y="50" fill="#94a3b8" font-size="11">runtime · auth · limits</text>
+        <text x="18" y="65" fill="#94a3b8" font-size="11">fail loud before scoring</text>
+      </g>
+      <path d="M404 37h38" stroke="#64748b" stroke-width="1.7" marker-end="url(#arrow)"/>
+      <g transform="translate(452)">
+        <rect width="170" height="74" rx="13" fill="#171a31" stroke="#4338ca"/>
+        <text x="18" y="28" fill="#c7d2fe" font-size="13" font-weight="680">EVIDENCE SCORE</text>
+        <text x="18" y="50" fill="#94a3b8" font-size="11">capability · provenance</text>
+        <text x="18" y="65" fill="#94a3b8" font-size="11">confidence · ranking</text>
+      </g>
+      <path d="M630 37h38" stroke="#64748b" stroke-width="1.7" marker-end="url(#arrow)"/>
+      <g transform="translate(678)">
+        <rect width="170" height="74" rx="13" fill="#211827" stroke="#9d174d"/>
+        <text x="18" y="28" fill="#f9a8d4" font-size="13" font-weight="680">POLICY OVERRIDES</text>
+        <text x="18" y="50" fill="#94a3b8" font-size="11">user · project · request</text>
+        <text x="18" y="65" fill="#94a3b8" font-size="11">explicit wins over default</text>
+      </g>
+      <path d="M856 37h38" stroke="#64748b" stroke-width="1.7" marker-end="url(#arrow)"/>
+      <g transform="translate(904)">
+        <rect width="198" height="74" rx="13" fill="#121e23" stroke="#166534"/>
+        <text x="18" y="28" fill="#86efac" font-size="13" font-weight="680">DSH EXECUTION</text>
+        <text x="18" y="50" fill="#94a3b8" font-size="11">AgentRegistry · AgentLoop</text>
+        <text x="18" y="65" fill="#94a3b8" font-size="11">sessions · tools · providers</text>
+      </g>
+    </g>
+
+    <!-- role split -->
+    <path d="M600 202v28M600 230H245M600 230H955" fill="none" stroke="#334155" stroke-width="1.6"/>
+    <path d="M245 230v20M600 230v20M955 230v20" stroke="#334155" stroke-width="1.6"/>
+
+    <g transform="translate(150 252)">
+      <rect width="190" height="76" rx="13" fill="#0c1f2c" stroke="#0e7490"/>
+      <circle cx="22" cy="22" r="6" fill="#38bdf8"/>
+      <text x="38" y="27" fill="#e2e8f0" font-size="14" font-weight="700">planner</text>
+      <text x="22" y="51" fill="#7dd3fc" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">strong reasoning</text>
+      <text x="22" y="67" fill="#64748b" font-size="10">plan artifact</text>
+    </g>
+    <g transform="translate(505 252)">
+      <rect width="190" height="76" rx="13" fill="#211725" stroke="#9d174d"/>
+      <circle cx="22" cy="22" r="6" fill="#f472b6"/>
+      <text x="38" y="27" fill="#e2e8f0" font-size="14" font-weight="700">workers</text>
+      <text x="22" y="51" fill="#f9a8d4" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">bounded parallelism</text>
+      <text x="22" y="67" fill="#64748b" font-size="10">task results</text>
+    </g>
+    <g transform="translate(860 252)">
+      <rect width="190" height="76" rx="13" fill="#242116" stroke="#a16207"/>
+      <circle cx="22" cy="22" r="6" fill="#facc15"/>
+      <text x="38" y="27" fill="#e2e8f0" font-size="14" font-weight="700">reviewer</text>
+      <text x="22" y="51" fill="#fde68a" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">independent check</text>
+      <text x="22" y="67" fill="#64748b" font-size="10">PASS / REVISE</text>
+    </g>
+
+    <!-- trace footer -->
+    <g transform="translate(48 350)">
+      <text x="0" y="0" fill="#94a3b8" font-size="11" font-weight="650">RESOLUTION TRACE</text>
+      <path d="M135 -4H1045" stroke="url(#line)" stroke-width="2.4"/>
+      <circle cx="220" cy="-4" r="4" fill="#38bdf8"/>
+      <circle cx="500" cy="-4" r="4" fill="#818cf8"/>
+      <circle cx="790" cy="-4" r="4" fill="#f472b6"/>
+      <text x="1054" y="0" fill="#64748b" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="10" text-anchor="end">candidate outcomes · field provenance · selected route</text>
+    </g>
+  </g>
+</svg>
