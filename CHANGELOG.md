@@ -11,6 +11,7 @@ DSHelm is still in alpha. Entries before the first public npm publication are **
 - Added a credential-free offline planner → workers → reviewer routing fixture with Resolution Trace output.
 - Prepared consistent npm metadata and package-level documentation for the six publishable packages.
 - Added a CI gate for publishable package metadata and reduced duplicate/stale branch runs.
+- Added a machine-readable publishable package graph and version-independent pack/install verification, removing release-version literals from CI.
 
 ## 0.3.0-alpha.0 — 2026-08-19 — source milestone
 
