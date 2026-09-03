@@ -1,28 +1,62 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const packageDirs = [
-  'packages/auth',
-  'packages/cli',
-  'packages/compat-omo',
-  'packages/core',
-  'packages/dsh',
-  'packages/model-knowledge',
-]
-
+const graph = JSON.parse(readFileSync('release-packages.json', 'utf8'))
 const root = JSON.parse(readFileSync('package.json', 'utf8'))
-const manifests = packageDirs.map((dir) => ({
-  dir,
-  manifest: JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')),
-}))
-
-const internalNames = new Set(manifests.map(({ manifest }) => manifest.name))
 const failures = []
 
-for (const { dir, manifest } of manifests) {
+if (graph.schemaVersion !== 1) failures.push('release-packages.json: schemaVersion must be 1')
+if (!Array.isArray(graph.packages) || graph.packages.length === 0) {
+  failures.push('release-packages.json: packages must be a non-empty array')
+}
+
+const graphEntries = Array.isArray(graph.packages) ? graph.packages : []
+const names = graphEntries.map((entry) => entry.name)
+const directories = graphEntries.map((entry) => entry.directory)
+if (new Set(names).size !== names.length) failures.push('release-packages.json: package names must be unique')
+if (new Set(directories).size !== directories.length) failures.push('release-packages.json: package directories must be unique')
+
+const workspacePackages = readdirSync('packages', { withFileTypes: true })
+  .filter((entry) => entry.isDirectory() && existsSync(join('packages', entry.name, 'package.json')))
+  .map((entry) => {
+    const directory = `packages/${entry.name}`
+    return {
+      directory,
+      manifest: JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8')),
+    }
+  })
+const workspaceByDirectory = new Map(workspacePackages.map((item) => [item.directory, item]))
+const workspaceByName = new Map(workspacePackages.map((item) => [item.manifest.name, item]))
+const graphDirectories = new Set(directories)
+const graphNames = new Set(names)
+
+for (const { directory, manifest } of workspacePackages) {
+  if (!graphDirectories.has(directory) && manifest.private !== true) {
+    failures.push(`${directory}/package.json: workspace outside release graph must set private=true`)
+  }
+}
+
+const manifests = []
+for (const entry of graphEntries) {
+  if (typeof entry.name !== 'string' || entry.name.length === 0) {
+    failures.push('release-packages.json: every package requires a non-empty name')
+    continue
+  }
+  if (typeof entry.directory !== 'string' || !workspaceByDirectory.has(entry.directory)) {
+    failures.push(`release-packages.json: ${entry.name} has invalid workspace directory ${entry.directory ?? '<missing>'}`)
+    continue
+  }
+  const manifest = workspaceByDirectory.get(entry.directory).manifest
+  manifests.push({ entry, manifest })
+}
+
+const releaseIndex = new Map(graphEntries.map((entry, index) => [entry.name, index]))
+
+for (const { entry, manifest } of manifests) {
+  const dir = entry.directory
   const fail = (message) => failures.push(`${dir}/package.json: ${message}`)
 
-  if (!manifest.name) fail('missing name')
+  if (manifest.name !== entry.name) fail(`name ${manifest.name ?? '<missing>'} does not match release graph ${entry.name}`)
   if (manifest.version !== root.version) fail(`version ${manifest.version ?? '<missing>'} does not match workspace ${root.version}`)
   if (typeof manifest.description !== 'string' || manifest.description.trim().length < 12) fail('missing useful description')
   if (manifest.license !== 'Apache-2.0') fail('license must be Apache-2.0')
@@ -41,8 +75,15 @@ for (const { dir, manifest } of manifests) {
 
   for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
     for (const [dependency, range] of Object.entries(manifest[section] ?? {})) {
-      if (internalNames.has(dependency) && range !== 'workspace:*') {
-        fail(`${section}.${dependency} must use workspace:* before packing`)
+      const workspaceDependency = workspaceByName.get(dependency)
+      if (!workspaceDependency) continue
+      if (!graphNames.has(dependency)) {
+        fail(`${section}.${dependency} points to an internal workspace that is not publishable`)
+        continue
+      }
+      if (range !== 'workspace:*') fail(`${section}.${dependency} must use workspace:* before packing`)
+      if ((releaseIndex.get(dependency) ?? Infinity) >= (releaseIndex.get(manifest.name) ?? -1)) {
+        fail(`${section}.${dependency} must appear earlier in release-packages.json publish order`)
       }
     }
   }
@@ -56,4 +97,5 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`package metadata OK (${manifests.length} publishable packages @ ${root.version})`)
+const privateCount = workspacePackages.length - manifests.length
+console.log(`package metadata OK (${manifests.length} publishable packages @ ${root.version}; ${privateCount} private workspaces; release order verified)`)
