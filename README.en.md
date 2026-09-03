@@ -30,6 +30,16 @@ The next public milestones are tracked as community issues:
 
 The project remains a **source preview** until those release and verification gates are actually satisfied.
 
+### Inspect routing before configuring a provider
+
+A credential-free offline fixture shows how a planner, two workers, and a reviewer pass through the same resolver and emit Resolution Trace data:
+
+```bash
+pnpm example:first-run
+```
+
+This example validates the **routing and explanation contract only**. It performs no real provider, tool, or agent-task execution. See [`examples/README.md`](examples/README.md) for the expected output and scope.
+
 ## Source preview
 
 Requirements: Node.js `>=22.19.0`, pnpm `11.7.0`, and a DSH CLI available on `PATH`. See [`compatibility.json`](compatibility.json) for the currently verified stack.
