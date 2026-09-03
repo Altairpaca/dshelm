@@ -4,7 +4,7 @@ This document defines the maintainer release contract while DSHelm is in alpha. 
 
 ## Release model
 
-[`release-packages.json`](../release-packages.json) is the machine-readable source of truth for the publishable package set and dependency-safe publish order. The workspace currently publishes six packages in lockstep. `pnpm package:check` verifies that every `packages/*` workspace is represented exactly once, package versions match the root version, and internal dependencies appear earlier in the release graph.
+[`release-packages.json`](../release-packages.json) is the machine-readable source of truth for the publishable package set and dependency-safe publish order. The workspace currently publishes six packages in lockstep. `pnpm package:check` verifies graph membership, package versions, and dependency order; any future workspace omitted from the release graph must be explicitly `private: true`, and a publishable package may not depend on an unpublished internal workspace.
 
 Until the first public alpha is proven end-to-end, releases remain a deliberate maintainer operation. Do not add automatic registry publication merely to reduce the number of commands; automation should encode a verified process, not define one.
 
@@ -14,7 +14,7 @@ Before changing a tag or publishing a tarball:
 
 - the intended commit is on `main` and required CI is green;
 - `package.json` and every publishable package use the same version;
-- [`release-packages.json`](../release-packages.json) matches the workspace package graph;
+- [`release-packages.json`](../release-packages.json) matches the intended public workspace graph;
 - [`compatibility.json`](../compatibility.json) records the DSH version used for verification;
 - user-facing behavior and limitations are reflected in the READMEs and [`CHANGELOG.md`](../CHANGELOG.md);
 - security-sensitive logs and install evidence are redacted;
