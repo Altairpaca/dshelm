@@ -6,6 +6,6 @@ The package exposes status/reference information needed by routing and diagnosti
 
 > **Security boundary:** never use fixtures, Issues, or traces to export tokens, cookies, account identifiers, or other product-owned secrets. See [`SECURITY.md`](../../SECURITY.md).
 
-See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [support guide](../../SUPPORT.md).
+See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [contribution guide](../../CONTRIBUTING.md).
 
 Apache License 2.0.
