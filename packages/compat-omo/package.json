@@ -1,7 +1,24 @@
 {
   "name": "@dshelm/compat-omo",
   "version": "0.3.0-alpha.0",
-  "description": "DSHelm OmO compatibility: read-only migration parser and mapper (behavioral port, no source copy).",
+  "description": "Read-only OmO configuration migration and compatibility mapping for DSHelm.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Altairpaca/dshelm.git",
+    "directory": "packages/compat-omo"
+  },
+  "homepage": "https://github.com/Altairpaca/dshelm#readme",
+  "bugs": {
+    "url": "https://github.com/Altairpaca/dshelm/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "omo",
+    "migration",
+    "compatibility"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -9,7 +26,15 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
