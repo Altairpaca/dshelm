@@ -1,8 +1,15 @@
 # DSHelm examples
 
-## Offline first-run routing fixture
+DSHelm keeps two first-run fixtures separate so evidence is not overstated:
 
-The first public example is intentionally **offline and credential-free**. It demonstrates the DSHelm policy resolver and Resolution Trace across a bounded role sequence:
+| Command | What is real | What is synthetic |
+| --- | --- | --- |
+| `pnpm example:first-run` | DSHelm Core resolution and Resolution Trace | runtime/provider capability fixture; no agent execution |
+| `pnpm example:dsh-execution` | DSH Context, agent factory, AgentLoop, planner/worker/reviewer dataflow, request routing | deterministic LLM adapter; no external provider or credential |
+
+## 1. Offline routing fixture
+
+The smallest example is intentionally **offline and credential-free**. It demonstrates the DSHelm policy resolver and Resolution Trace across a bounded role sequence:
 
 ```text
 planner → worker A
@@ -36,6 +43,32 @@ Expected selection:
 | worker B | cheap parallelism + fast latency | `fast-worker` |
 | reviewer | independent verification | `reasoning-pro` |
 
-The fixture is covered by `packages/core/tests/first-run-example.test.ts`, including deterministic output, role/model selection, trace-v2 presence, and a guard against credential-like data appearing in the serialized result.
+The fixture is covered by `packages/core/tests/first-run-example.test.ts`.
 
-A later integration example may execute real DSH tasks, but it should remain separate from this fixture so the repository never confuses a deterministic policy demonstration with live-provider evidence.
+## 2. Real DSH execution with a synthetic provider
+
+The second fixture crosses the execution boundary without requiring an API key:
+
+```bash
+pnpm example:dsh-execution
+```
+
+It composes the real DSH services used by DSHelm (`LlmRuntime`, sessions, system prompt, tools, agent registry, AgentLoop, session projections, and subagents), registers a deterministic in-process LLM adapter, then runs the repository's `runPolicySlice` contract:
+
+```text
+goal
+  → planner executes and emits PlanArtifact
+  → two bounded workers execute through AgentLoop
+  → reviewer executes and emits PASS / REVISE
+```
+
+The emitted JSON includes:
+
+- the planner artifact and both worker outputs;
+- the reviewer verdict and revision count;
+- every DSHelm resolved policy and Resolution Trace;
+- `requestRoutes`, captured from the actual DSH LLM adapter calls.
+
+The fixture test asserts that `requestRoutes` exactly match the provider/model routes in the DSHelm resolutions. This demonstrates that routing decisions are carried into real DSH agent requests. The model responses remain deterministic fixture data, so this is **not** evidence that any external provider, model quality, OAuth flow, or network path works.
+
+The execution fixture is covered by `packages/dsh/tests/dsh-execution-example.test.ts`, and CI records both first-run JSON outputs as short-lived artifacts.
