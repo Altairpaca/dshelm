@@ -6,7 +6,7 @@ This package connects DSHelm policy resolution to supported DSH extension surfac
 
 > **Compatibility-sensitive alpha:** this package is tested against the DSH version pinned by the repository. Check [`compatibility.json`](../../compatibility.json) before assuming support for another DSH release.
 
-See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [support guide](../../SUPPORT.md).
+See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [contribution guide](../../CONTRIBUTING.md).
 
 DSHelm is independent and is not affiliated with or endorsed by DeepSeek.
 
