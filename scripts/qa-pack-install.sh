@@ -28,7 +28,10 @@ process.stdout.write(entry.tarball)
 NODE
 }
 
-mapfile -t ALL_TARBALLS < <(node - "$PACK_MANIFEST" <<'NODE'
+ALL_TARBALLS=()
+while IFS= read -r tarball; do
+  ALL_TARBALLS+=("$tarball")
+done < <(node - "$PACK_MANIFEST" <<'NODE'
 const fs = require('node:fs')
 const manifest = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'))
 for (const entry of manifest.packages) console.log(entry.tarball)
