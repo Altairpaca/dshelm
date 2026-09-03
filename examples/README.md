@@ -36,6 +36,6 @@ Expected selection:
 | worker B | cheap parallelism + fast latency | `fast-worker` |
 | reviewer | independent verification | `reasoning-pro` |
 
-The fixture is covered by `examples/first-run-routing.test.ts`, including deterministic output, role/model selection, trace-v2 presence, and a guard against credential-like data appearing in the serialized result.
+The fixture is covered by `packages/core/tests/first-run-example.test.ts`, including deterministic output, role/model selection, trace-v2 presence, and a guard against credential-like data appearing in the serialized result.
 
 A later integration example may execute real DSH tasks, but it should remain separate from this fixture so the repository never confuses a deterministic policy demonstration with live-provider evidence.
