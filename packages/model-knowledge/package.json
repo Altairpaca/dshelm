@@ -2,6 +2,23 @@
   "name": "@dshelm/model-knowledge",
   "version": "0.3.0-alpha.0",
   "description": "Evidence-backed model capability knowledge for DSHelm routing.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Altairpaca/dshelm.git",
+    "directory": "packages/model-knowledge"
+  },
+  "homepage": "https://github.com/Altairpaca/dshelm#readme",
+  "bugs": {
+    "url": "https://github.com/Altairpaca/dshelm/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "model-routing",
+    "model-capabilities",
+    "ai-agent"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -9,7 +26,15 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
