@@ -1,8 +1,10 @@
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { parse, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
-const destination = resolve(process.argv[2] ?? '.release-pack')
+const rawDestination = process.argv[2] === '--' ? process.argv[3] : process.argv[2]
+const destination = resolve(rawDestination ?? '.release-pack')
+const repositoryRoot = resolve('.')
 const graph = JSON.parse(readFileSync('release-packages.json', 'utf8'))
 const root = JSON.parse(readFileSync('package.json', 'utf8'))
 
@@ -10,8 +12,17 @@ if (graph.schemaVersion !== 1 || !Array.isArray(graph.packages) || graph.package
   throw new Error('release-packages.json must contain schemaVersion=1 and a non-empty packages array')
 }
 
-rmSync(destination, { recursive: true, force: true })
-mkdirSync(destination, { recursive: true })
+if (destination === repositoryRoot || destination === parse(destination).root) {
+  throw new Error(`refusing unsafe pack destination: ${destination}`)
+}
+if (existsSync(destination)) {
+  const existing = readdirSync(destination)
+  if (existing.length > 0) {
+    throw new Error(`pack destination must be empty: ${destination} contains ${existing.length} entries`)
+  }
+} else {
+  mkdirSync(destination, { recursive: true })
+}
 
 const packed = []
 for (const entry of graph.packages) {
