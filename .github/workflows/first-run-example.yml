@@ -31,7 +31,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Verify fixture contract
-        run: pnpm vitest run examples/first-run-routing.test.ts
+        run: pnpm vitest run packages/core/tests/first-run-example.test.ts
       - name: Record first-run trace
         run: pnpm example:first-run > first-run-output.json
       - name: Validate recorded output
