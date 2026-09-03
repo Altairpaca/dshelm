@@ -34,6 +34,6 @@ describe('DSH execution example', () => {
     }
 
     const serialized = JSON.stringify(result)
-    expect(serialized).not.toMatch(/api[_-]?key|cookie|bearer\s|credential/i)
+    expect(serialized).not.toMatch(/api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|cookie|bearer\s/i)
   })
 })
