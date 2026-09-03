@@ -12,6 +12,18 @@
     "dshReferenceCheckout": "99f6f02fecdb7dff40c3fbc9470f5907c29f74ca (dsh-v0.1.0-rc.7, read-only reference)",
     "verifiedDate": "2026-08-18"
   },
+  "target": {
+    "dshRelease": "0.1.2-rc.1",
+    "releaseTag": "dsh-v0.1.2-rc.1",
+    "sourceCommit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+    "releaseDate": "2026-09-03",
+    "status": "forward-compatible source bridges implemented; promotion to tested awaits complete npm publication plus clean-profile verification",
+    "auditedSeams": [
+      "Session.snapshotEvents() replacing Session.events",
+      "SubagentCapabilities.agentOptions",
+      "AgentOptions.reasoningEffort"
+    ]
+  },
   "seams": {
     "llm": [
       "listProviders",
@@ -22,16 +34,18 @@
     ],
     "agent": [
       "AgentRegistry.create",
-      "installModelSelection"
+      "installModelSelection",
+      "AgentOptions provider/model with 0.1.2 reasoningEffort bridge"
     ],
     "subagent": [
       "SubagentRuntime.registerProvider",
-      "SubagentStartRequest (persona/toolFilter/maxDepth)",
+      "SubagentStartRequest (agentOptions/persona/toolFilter/maxDepth)",
       "startInProcessRun"
     ],
     "session": [
       "SessionStore",
       "SessionEventMap augmentation via '@deepseek-ai/dsh-session/types'",
+      "snapshotEvents() with legacy events fallback",
       "request/header"
     ],
     "projection": [
@@ -44,10 +58,13 @@
       "settingsNamespace"
     ]
   },
-    "notes": [
-    "dsh-client-runtime@0.1.0-rc.7 is browser-only and requires the DSH Web shell",
-    "public CLI tarball is named dshelm; workspace @dshelm packages are packed together for closure verification",
-    "clean journey uses an isolated HOME/DSH_HOME and verifies init, rc.7 dump-config, bounded boot, doctor, explain, and uninstall",
-    "native auth descriptors are version-gated evidence snapshots: Codex 0.147.0 and Claude Code 2.1.234; Gemini and Qwen shell login/logout are unsupported"
+  "notes": [
+    "The verified npm/install baseline remains 0.1.0-rc.7 until the 0.1.2-rc.1 package set is fully published and the clean profile journey passes.",
+    "DSH 0.1.2 removes direct Session.events reads in favor of seq/eventAt()/snapshotEvents(); DSHelm now prefers snapshotEvents() and falls back to the legacy getter.",
+    "DSH 0.1.2 adds the SubagentCapabilities.agentOptions gate and AgentOptions.reasoningEffort; DSHelm advertises the capability at runtime while retaining the request/header seed for legacy hosts.",
+    "dsh-client-runtime@0.1.0-rc.7 is browser-only and requires the DSH Web shell.",
+    "public CLI tarball is named dshelm; workspace @dshelm packages are packed together for closure verification.",
+    "clean journey uses an isolated HOME/DSH_HOME and verifies init, dump-config, bounded boot, doctor, explain, and uninstall.",
+    "native auth descriptors are version-gated evidence snapshots: Codex 0.147.0 and Claude Code 2.1.234; Gemini and Qwen shell login/logout are unsupported."
   ]
 }
