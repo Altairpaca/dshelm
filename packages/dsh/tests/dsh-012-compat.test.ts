@@ -35,7 +35,9 @@ describe('DSH 0.1.2 compatibility bridges', () => {
       sessionIdOf: () => 'compat-test',
     })
 
-    expect(provider.capabilities).toMatchObject({
+    // The installed rc.7 type does not know the new field yet; assert the
+    // runtime shape explicitly so this test itself remains dual-generation.
+    expect(provider.capabilities as unknown as Record<string, unknown>).toMatchObject({
       agentOptions: true,
       outputSchema: false,
       depthLimit: true,
