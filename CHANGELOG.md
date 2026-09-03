@@ -9,8 +9,11 @@ DSHelm is still in alpha. Entries before the first public npm publication are **
 - Clarified the public project positioning and September maintenance status.
 - Added contributor/support governance and evidence-driven contribution rules.
 - Added a credential-free offline planner → workers → reviewer routing fixture with Resolution Trace output.
+- Added a credential-free execution fixture that carries DSHelm resolutions through the real DSH agent factory and AgentLoop, with actual request routes checked against Resolution Trace.
 - Prepared consistent npm metadata and package-level documentation for the six publishable packages.
 - Added a CI gate for publishable package metadata and reduced duplicate/stale branch runs.
+- Kept `dshelm init`'s default `@dshelm/dsh` bundle version aligned with the installed CLI package version.
+- Added a machine-readable publishable package graph and version-independent pack/install verification, removing release-version literals from CI and reading the verified DSH package baseline from `compatibility.json`.
 
 ## 0.3.0-alpha.0 — 2026-08-19 — source milestone
 
