@@ -7,6 +7,7 @@ on:
     paths:
       - 'examples/**'
       - 'packages/core/**'
+      - 'packages/dsh/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/first-run-example.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'examples/**'
       - 'packages/core/**'
+      - 'packages/dsh/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/first-run-example.yml'
@@ -47,5 +49,31 @@ jobs:
         with:
           name: first-run-resolution-trace
           path: first-run-output.json
+          if-no-files-found: error
+          retention-days: 14
+
+  dsh-execution-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify execution fixture contract
+        run: pnpm vitest run packages/dsh/tests/dsh-execution-example.test.ts
+      - name: Record DSH execution trace
+        run: pnpm example:dsh-execution > dsh-execution-output.json
+      - name: Validate executed routes
+        run: |
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('dsh-execution-output.json','utf8')); if(x.fixture!=='synthetic-provider-real-dsh-execution'||x.workers.length!==2||x.verdict.verdict!=='PASS') process.exit(1); const resolved=x.resolutions.map(r=>r.provider+'/'+r.model).join(','); if(x.requestRoutes.join(',')!==resolved) process.exit(1);"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dsh-execution-resolution-trace
+          path: dsh-execution-output.json
           if-no-files-found: error
           retention-days: 14
