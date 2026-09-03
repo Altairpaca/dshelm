@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  offline-routing-fixture:
+  first-run-fixtures:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,42 +38,28 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Verify fixture contract
+
+      - name: Verify offline routing fixture contract
         run: pnpm vitest run packages/core/tests/first-run-example.test.ts
-      - name: Record first-run trace
+      - name: Record offline routing trace
         run: pnpm example:first-run > first-run-output.json
-      - name: Validate recorded output
+      - name: Validate offline routing output
         run: |
           node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('first-run-output.json','utf8')); if(x.fixture!=='offline-routing-only'||x.steps.length!==4) process.exit(1); const roles=x.steps.map(s=>s.resolution.role).join(','); if(roles!=='planner,worker,worker,reviewer') process.exit(1);"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: first-run-resolution-trace
-          path: first-run-output.json
-          if-no-files-found: error
-          retention-days: 14
 
-  dsh-execution-fixture:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Verify execution fixture contract
+      - name: Verify DSH execution fixture contract
         run: pnpm vitest run packages/dsh/tests/dsh-execution-example.test.ts
       - name: Record DSH execution trace
         run: pnpm example:dsh-execution > dsh-execution-output.json
       - name: Validate executed routes
         run: |
           node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('dsh-execution-output.json','utf8')); if(x.fixture!=='synthetic-provider-real-dsh-execution'||x.workers.length!==2||x.verdict.verdict!=='PASS') process.exit(1); const resolved=x.resolutions.map(r=>r.provider+'/'+r.model).join(','); if(x.requestRoutes.join(',')!==resolved) process.exit(1);"
+
       - uses: actions/upload-artifact@v4
         with:
-          name: dsh-execution-resolution-trace
-          path: dsh-execution-output.json
+          name: first-run-evidence
+          path: |
+            first-run-output.json
+            dsh-execution-output.json
           if-no-files-found: error
           retention-days: 14
