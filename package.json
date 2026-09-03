@@ -14,6 +14,7 @@
     "package:check": "node scripts/check-package-metadata.mjs",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "example:first-run": "tsx examples/first-run-routing.ts",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
     "qa:deepseek-live": "tsx scripts/qa-deepseek-live.ts",
     "bench": "tsx scripts/bench-resolver.ts",
