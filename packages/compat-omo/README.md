@@ -6,6 +6,6 @@ The mapper analyzes supported OmO configuration concepts and emits DSHelm policy
 
 This package does not copy OmO credentials, sessions, or private runtime stores.
 
-See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [support guide](../../SUPPORT.md).
+See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [contribution guide](../../CONTRIBUTING.md).
 
 Apache License 2.0.
