@@ -1,7 +1,24 @@
 {
   "name": "@dshelm/auth",
   "version": "0.3.0-alpha.0",
-  "description": "Provider-neutral DSHelm account and authentication capability layer.",
+  "description": "Provider-neutral account and authentication capability layer for DSHelm.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Altairpaca/dshelm.git",
+    "directory": "packages/auth"
+  },
+  "homepage": "https://github.com/Altairpaca/dshelm#readme",
+  "bugs": {
+    "url": "https://github.com/Altairpaca/dshelm/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "authentication",
+    "provider",
+    "ai-agent"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -9,7 +26,15 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
