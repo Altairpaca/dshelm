@@ -80,7 +80,7 @@ DSHelm Core owns policy, configuration, routing, and explanation. DSH and its pl
 
 Compatibility work is tracked through reproducible evidence across DSH versions, providers/models, Linux, macOS, Windows 11 + WSL2, and credential/network/data-location boundaries. Public DSH interface questions should be discussed against the corresponding upstream contract rather than maintained as a parallel undocumented API.
 
-Development setup, test commands, and contribution boundaries are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md). Issues and pull requests are welcome in English or Simplified Chinese.
+For contribution workflow, use [`CONTRIBUTING.md`](CONTRIBUTING.md). For usage questions and channel selection, use [`SUPPORT.md`](SUPPORT.md). Community participation is covered by [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Issues and pull requests are welcome in English or Simplified Chinese.
 
 DSHelm is an independent project. It is not affiliated with or endorsed by DeepSeek or by any model/provider mentioned in the repository.
 
