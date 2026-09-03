@@ -12,25 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  community-docs:
+  repo-contracts:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node scripts/check-community-docs.mjs
+      - name: Community docs contract
+        run: node scripts/check-community-docs.mjs
+      - name: Publishable package contract
+        run: node scripts/check-package-metadata.mjs
 
-  package-metadata:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/check-package-metadata.mjs
-
-  core-unit:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,80 +36,20 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts
-
-  core-property:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm vitest run packages/core/tests/core-property.test.ts
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-
-  dsh-contract:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # keyless real-execution + host composition + vertical slice (hermetic)
-      - run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
-
-  v03-auth-knowledge-cli:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
-      - run: pnpm --filter dshelm typecheck
+      - name: Typecheck workspace
+        run: pnpm typecheck
+      - name: Build workspace
+        run: pnpm build
+      - name: Core unit contracts
+        run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts
+      - name: Core property contracts
+        run: pnpm vitest run packages/core/tests/core-property.test.ts
+      - name: DSH execution and host contracts
+        run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
+      - name: Auth, knowledge, CLI, and overlay contracts
+        run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
+      - name: CLI package typecheck
+        run: pnpm --filter dshelm typecheck
 
   pack-install:
     runs-on: ubuntu-latest
