@@ -15,6 +15,7 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { ResolvedAgentPolicy } from '@dshelm/core'
 import type { DSHelmPolicyServiceFace } from './service.ts'
 import { installDSHelmSelection, toModelSelection } from './model-selection.ts'
+import { snapshotSessionLog } from './session-log-compat.ts'
 
 export interface SliceGoal {
   /** The task text delivered to the planner. */
@@ -134,7 +135,7 @@ export async function runRoleAgent(options: {
 
 function lastAssistantText(agent: Agent): string {
   let text = ''
-  for (const event of agent.session.events) {
+  for (const event of snapshotSessionLog(agent.session)) {
     if (event.type === 'assistant/message') {
       const joined = event.data.message.content
         .filter((block) => block.type === 'text')
