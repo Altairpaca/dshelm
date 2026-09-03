@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "name": "@dshelm/core",
+      "directory": "packages/core"
+    },
+    {
+      "name": "@dshelm/model-knowledge",
+      "directory": "packages/model-knowledge"
+    },
+    {
+      "name": "@dshelm/auth",
+      "directory": "packages/auth"
+    },
+    {
+      "name": "@dshelm/compat-omo",
+      "directory": "packages/compat-omo"
+    },
+    {
+      "name": "@dshelm/dsh",
+      "directory": "packages/dsh"
+    },
+    {
+      "name": "dshelm",
+      "directory": "packages/cli"
+    }
+  ]
+}

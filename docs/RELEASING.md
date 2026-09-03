@@ -4,14 +4,7 @@ This document defines the maintainer release contract while DSHelm is in alpha. 
 
 ## Release model
 
-DSHelm currently versions the workspace and all six publishable packages in lockstep:
-
-1. `@dshelm/core`
-2. `@dshelm/model-knowledge`
-3. `@dshelm/auth`
-4. `@dshelm/compat-omo`
-5. `@dshelm/dsh`
-6. `dshelm`
+[`release-packages.json`](../release-packages.json) is the machine-readable source of truth for the publishable package set and dependency-safe publish order. The workspace currently publishes six packages in lockstep. `pnpm package:check` verifies graph membership, package versions, and dependency order; any future workspace omitted from the release graph must be explicitly `private: true`, and a publishable package may not depend on an unpublished internal workspace.
 
 Until the first public alpha is proven end-to-end, releases remain a deliberate maintainer operation. Do not add automatic registry publication merely to reduce the number of commands; automation should encode a verified process, not define one.
 
@@ -21,6 +14,7 @@ Before changing a tag or publishing a tarball:
 
 - the intended commit is on `main` and required CI is green;
 - `package.json` and every publishable package use the same version;
+- [`release-packages.json`](../release-packages.json) matches the intended public workspace graph;
 - [`compatibility.json`](../compatibility.json) records the DSH version used for verification;
 - user-facing behavior and limitations are reflected in the READMEs and [`CHANGELOG.md`](../CHANGELOG.md);
 - security-sensitive logs and install evidence are redacted;
@@ -34,50 +28,37 @@ pnpm package:check
 pnpm docs:check
 pnpm typecheck
 pnpm test
-pnpm build
+pnpm qa:pack-install
 ```
 
-For a release candidate, also require the repository `pack-install` CI lane to pass.
+`qa:pack-install` builds the workspace, packs the exact release graph, installs every tarball into a fresh project, verifies package exports and the CLI entry point, then runs the isolated HOME/DSH_HOME init → doctor/explain → uninstall journey.
 
 ## 2. Versioning
 
-During alpha, increment the prerelease identifier for public registry releases, for example `0.3.0-alpha.1` → `0.3.0-alpha.2`. Update the root workspace and all publishable package manifests together.
+During alpha, increment the prerelease identifier for public registry releases, for example `0.3.0-alpha.1` → `0.3.0-alpha.2`. Update the root workspace and all publishable package manifests together. The package metadata gate will fail if any package drifts from the root version.
 
 A source milestone does not become a public release merely because its manifest contains a version. Public release status requires registry artifacts plus a GitHub prerelease and clean-install evidence.
 
-## 3. Pack locally
+## 3. Pack once
 
 Pack exactly the artifacts exercised by CI:
 
 ```bash
-rm -rf /tmp/dshelm-release
-mkdir -p /tmp/dshelm-release
-pnpm --filter @dshelm/core pack --pack-destination /tmp/dshelm-release
-pnpm --filter @dshelm/model-knowledge pack --pack-destination /tmp/dshelm-release
-pnpm --filter @dshelm/auth pack --pack-destination /tmp/dshelm-release
-pnpm --filter @dshelm/compat-omo pack --pack-destination /tmp/dshelm-release
-pnpm --filter @dshelm/dsh pack --pack-destination /tmp/dshelm-release
-pnpm --filter dshelm pack --pack-destination /tmp/dshelm-release
+pnpm build
+pnpm release:pack -- /tmp/dshelm-release
 ```
+
+The packer reads [`release-packages.json`](../release-packages.json), writes the versioned tarballs, and records their absolute paths and versions in `/tmp/dshelm-release/pack-manifest.json`. Treat those tarballs as the release candidate artifacts; do not repack between inspection, verification, and publication.
 
 Inspect the tarball contents and packed manifests before publication. In particular, confirm that internal `workspace:*` dependencies have been rewritten to publishable version ranges and that no source secrets, private fixtures, local paths, or unrelated build artifacts are present.
 
 ## 4. Publish in dependency order
 
-Authenticate to npm using the maintainer-owned release account and publish the exact tarballs already inspected. For alpha releases, use the `alpha` dist-tag rather than `latest`.
+Authenticate to npm using the maintainer-owned release account and publish the exact tarballs recorded by `pack-manifest.json`. For alpha releases, use the `alpha` dist-tag rather than `latest`.
 
-Dependency order:
+The order of the `packages` array in [`release-packages.json`](../release-packages.json) is the publication order. `pnpm package:check` rejects an internal dependency that appears after its dependent package.
 
-```text
-@dshelm/core
-@dshelm/model-knowledge
-@dshelm/auth
-@dshelm/compat-omo
-@dshelm/dsh
-dshelm
-```
-
-Use `npm publish <tarball> --access public --tag alpha` for each package. Stop immediately if any package fails; do not continue to publish dependents against a missing dependency.
+Use `npm publish <tarball> --access public --tag alpha` for each manifest entry. Stop immediately if any package fails; do not continue to publish dependents against a missing dependency.
 
 ## 5. Verify the public registry, not the workspace
 
@@ -119,4 +100,4 @@ If an alpha is broken after publication:
 
 ## When to automate further
 
-Introduce Changesets or equivalent release automation after at least one manual public alpha has passed this process and package boundaries have proven stable. At that point automation should handle version bumps, changelog assembly, and publication while preserving the same CI and clean-install evidence gates.
+Introduce Changesets or equivalent release automation after at least one manual public alpha has passed this process and package boundaries have proven stable. At that point automation should handle version bumps, changelog assembly, and publication while preserving the same release graph, CI, artifact, and clean-install evidence gates.
