@@ -15,6 +15,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "example:first-run": "tsx examples/first-run-routing.ts",
+    "example:dsh-execution": "tsx examples/dsh-execution.ts",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
     "qa:deepseek-live": "tsx scripts/qa-deepseek-live.ts",
     "bench": "tsx scripts/bench-resolver.ts",
