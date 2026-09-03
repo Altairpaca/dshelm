@@ -16,15 +16,24 @@ const directories = graphEntries.map((entry) => entry.directory)
 if (new Set(names).size !== names.length) failures.push('release-packages.json: package names must be unique')
 if (new Set(directories).size !== directories.length) failures.push('release-packages.json: package directories must be unique')
 
-const workspacePackageDirs = readdirSync('packages', { withFileTypes: true })
+const workspacePackages = readdirSync('packages', { withFileTypes: true })
   .filter((entry) => entry.isDirectory() && existsSync(join('packages', entry.name, 'package.json')))
-  .map((entry) => `packages/${entry.name}`)
-  .sort()
-const graphPackageDirs = [...directories].sort()
-if (JSON.stringify(workspacePackageDirs) !== JSON.stringify(graphPackageDirs)) {
-  failures.push(
-    `release-packages.json: package directories must match packages/* workspaces; workspace=${workspacePackageDirs.join(', ')} graph=${graphPackageDirs.join(', ')}`,
-  )
+  .map((entry) => {
+    const directory = `packages/${entry.name}`
+    return {
+      directory,
+      manifest: JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8')),
+    }
+  })
+const workspaceByDirectory = new Map(workspacePackages.map((item) => [item.directory, item]))
+const workspaceByName = new Map(workspacePackages.map((item) => [item.manifest.name, item]))
+const graphDirectories = new Set(directories)
+const graphNames = new Set(names)
+
+for (const { directory, manifest } of workspacePackages) {
+  if (!graphDirectories.has(directory) && manifest.private !== true) {
+    failures.push(`${directory}/package.json: workspace outside release graph must set private=true`)
+  }
 }
 
 const manifests = []
@@ -33,15 +42,14 @@ for (const entry of graphEntries) {
     failures.push('release-packages.json: every package requires a non-empty name')
     continue
   }
-  if (typeof entry.directory !== 'string' || !existsSync(join(entry.directory, 'package.json'))) {
-    failures.push(`release-packages.json: ${entry.name} has invalid directory ${entry.directory ?? '<missing>'}`)
+  if (typeof entry.directory !== 'string' || !workspaceByDirectory.has(entry.directory)) {
+    failures.push(`release-packages.json: ${entry.name} has invalid workspace directory ${entry.directory ?? '<missing>'}`)
     continue
   }
-  const manifest = JSON.parse(readFileSync(join(entry.directory, 'package.json'), 'utf8'))
+  const manifest = workspaceByDirectory.get(entry.directory).manifest
   manifests.push({ entry, manifest })
 }
 
-const internalNames = new Set(manifests.map(({ manifest }) => manifest.name))
 const releaseIndex = new Map(graphEntries.map((entry, index) => [entry.name, index]))
 
 for (const { entry, manifest } of manifests) {
@@ -67,7 +75,12 @@ for (const { entry, manifest } of manifests) {
 
   for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
     for (const [dependency, range] of Object.entries(manifest[section] ?? {})) {
-      if (!internalNames.has(dependency)) continue
+      const workspaceDependency = workspaceByName.get(dependency)
+      if (!workspaceDependency) continue
+      if (!graphNames.has(dependency)) {
+        fail(`${section}.${dependency} points to an internal workspace that is not publishable`)
+        continue
+      }
       if (range !== 'workspace:*') fail(`${section}.${dependency} must use workspace:* before packing`)
       if ((releaseIndex.get(dependency) ?? Infinity) >= (releaseIndex.get(manifest.name) ?? -1)) {
         fail(`${section}.${dependency} must appear earlier in release-packages.json publish order`)
@@ -84,4 +97,5 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(`package metadata OK (${manifests.length} publishable packages @ ${root.version}; release order verified)`)
+const privateCount = workspacePackages.length - manifests.length
+console.log(`package metadata OK (${manifests.length} publishable packages @ ${root.version}; ${privateCount} private workspaces; release order verified)`)
