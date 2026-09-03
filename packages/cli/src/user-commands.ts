@@ -129,7 +129,11 @@ function probeDsh() {
 
 const DSH_PROFILE_NAME = 'dshelm'
 const DSH_BUNDLES = ['@deepseek-ai/dsh-base', '@dshelm/dsh'] as const
-const DEFAULT_DSH_BUNDLE_SPEC = '@dshelm/dsh@0.3.0-alpha.0'
+const cliPackageManifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version?: unknown }
+if (typeof cliPackageManifest.version !== 'string' || cliPackageManifest.version.length === 0) {
+  throw new Error('dshelm package.json must expose a non-empty version')
+}
+const DEFAULT_DSH_BUNDLE_SPEC = `@dshelm/dsh@${cliPackageManifest.version}`
 
 function resolveDshHome(environment: NodeJS.ProcessEnv): string {
   const configured = environment.DSH_HOME?.trim()
