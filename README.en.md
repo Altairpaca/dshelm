@@ -20,7 +20,7 @@
 </p>
 
 > [!IMPORTANT]
-> DSHelm is a `0.3.0-alpha` **source preview**. The npm packages are not published yet and the project is not production-ready. DeepSeek Harness `0.1.2-rc.1` is currently tracked as the **source target**; it will not be promoted to the verified install baseline until the complete npm package set and clean-profile journey are proven.
+> DSHelm is a `0.3.0-alpha` **source preview**. The npm packages are not published yet and the project is not production-ready. DeepSeek Harness `0.1.2-rc.1` is the current **source target**: core/session/subagent and browser-source bridges are in place, but the 0.1.2 client package graph has moved away from the legacy `dsh-client-runtime` into the new client module system. It will not be promoted to the verified install baseline until the complete npm graph, client manifest/lockfile migration, and clean-profile/Web journey are proven.
 
 <p align="center">
   <img src="docs/assets/compatibility-status.svg" alt="DSHelm compatibility status: source preview, verified DSH install baseline, and current DSH source target" width="100%">
@@ -97,11 +97,11 @@ Resolver and execution contracts are different failure domains. Keeping them sep
 DSHelm deliberately separates a verified install baseline from the newest upstream source target:
 
 - **Verified install baseline — `0.1.0-rc.7`**: package/runtime, clean HOME, profile composition, bounded boot, doctor/explain/uninstall have been exercised.
-- **Current source target — `0.1.2-rc.1`**: the latest DeepSeek Harness source release published on **September 3, 2026**. Forward-compatible bridges for confirmed API changes are now in DSHelm, while npm-package promotion and clean-profile verification remain pending.
+- **Current source target — `0.1.2-rc.1`**: the latest DeepSeek Harness source release published on **September 3, 2026**. Confirmed core/session/subagent changes are bridged and the Web control-plane source no longer imports the removed legacy runtime types; **the 0.1.2 client package graph migration and Web bundle verification remain promotion blockers**.
 
-The machine-readable status lives in [`compatibility.json`](compatibility.json). The current upstream target is [`dsh-v0.1.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-rc.1).
+The machine-readable status lives in [`compatibility.json`](compatibility.json), and the full seam-by-seam audit is in [`docs/compatibility/dsh-0.1.2-rc.1.md`](docs/compatibility/dsh-0.1.2-rc.1.md). The current upstream target is [`dsh-v0.1.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-rc.1).
 
-### 0.1.2 changes already bridged
+### 0.1.2 changes bridged or explicitly located
 
 | Upstream change | DSHelm handling |
 | --- | --- |
@@ -109,8 +109,10 @@ The machine-readable status lives in [`compatibility.json`](compatibility.json).
 | `SubagentCapabilities` adds the `agentOptions` gate | DSHelm provider advertises `agentOptions: true` at runtime while remaining compilable against the legacy type surface |
 | `AgentOptions` adds `reasoningEffort` | current hosts receive the reasoning option directly; legacy hosts retain the `request/header` seed path |
 | callers may specify provider/model/reasoning/max output for subagents | DSHelm maps policy resolution onto the official `agentOptions` seam; max-output policy is not claimed yet |
+| old `packages/client/runtime` / `@deepseek-ai/dsh-client-runtime` disappears from the 0.1.2 source tree | browser source now types only the `sessions.binding(...).session.projections` face it actually consumes; no legacy runtime client-type import remains |
+| `@deepseek-ai/dsh-client-modules` now owns `dsh.client` discovery, boot graph, `/plugins` bundles and lazy materialization | mechanism audited; `@dshelm/dsh` dependency/inject metadata must migrate atomically with the exact-version lockfile and a real Web load assertion |
 
-The package manifests are intentionally **not** force-bumped to `0.1.2-rc.1` in this step. Upstream npm publication is rolling on September 3, and the DSHelm lockfile still represents the verified legacy baseline. Promotion must happen together with complete package availability, lockfile regeneration, and a fresh install/profile boot.
+The package manifests are intentionally **not** force-bumped to `0.1.2-rc.1` in this step. Upstream npm publication is rolling on September 3, and the DSHelm lockfile still represents the verified legacy baseline. Promotion must happen together with complete package availability, the client module graph, lockfile regeneration, and a fresh install/profile boot/Web-client materialization.
 
 <details>
 <summary><strong>Why not claim generic “0.1.x support”?</strong></summary>
@@ -167,7 +169,7 @@ dshelm                   CLI · init · doctor · auth · explain · uninstall
 
 | Issue | Next step |
 | --- | --- |
-| [#7 — npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | DSH dependency promotion, registry publish, clean-HOME install/uninstall evidence |
+| [#7 — npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | DSH dependency + client-module promotion, registry publish, clean-HOME/Web install/uninstall evidence |
 | [#8 — platform matrix](https://github.com/Altairpaca/dshelm/issues/8) | reproducible Linux, macOS Apple Silicon, Windows 11 + WSL2 verification |
 | [#9 — first-run evidence](https://github.com/Altairpaca/dshelm/issues/9) | deterministic execution fixture landed; add provider-backed evidence |
 | [#10 — contributor entry points](https://github.com/Altairpaca/dshelm/issues/10) | provider/model evidence, platform verification, docs, routing examples, reproducible bugs |
