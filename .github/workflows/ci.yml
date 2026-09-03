@@ -44,8 +44,8 @@ jobs:
         run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts
       - name: Core property contracts
         run: pnpm vitest run packages/core/tests/core-property.test.ts
-      - name: DSH execution and host contracts
-        run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
+      - name: DSH execution, host, and release-bridge contracts
+        run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts packages/dsh/tests/dsh-012-compat.test.ts
       - name: Auth, knowledge, CLI, and overlay contracts
         run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
       - name: CLI package typecheck
@@ -65,11 +65,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm qa:pack-install
 
-  # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a
-  # default hermetic dependency.
+  # Optional upstream source lane: kept manual while the DSH 0.1.2 package set
+  # is rolling through npm. compatibility.json records the current source
+  # target separately from the verified install baseline.
   dsh-upstream-source-contract:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
-      - run: echo 'dsh-upstream-source-contract is informational; requires DSH_REFERENCE_DIR checkout'
+      - run: echo 'Use compatibility.json target.dshRelease as the source canary; promote it to the install baseline only after the npm package set and clean profile journey are verified.'
