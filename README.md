@@ -20,7 +20,7 @@
 </p>
 
 > [!IMPORTANT]
-> DSHelm 当前是 `0.3.0-alpha` **源码预览版**，npm 包尚未发布，不建议用于生产环境。项目正在适配 DeepSeek Harness `0.1.2-rc.1`；该版本目前作为 **source target** 跟踪，完整 npm package set 与 clean-profile 验证完成前，不会把它标记为已验证安装基线。
+> DSHelm 当前是 `0.3.0-alpha` **源码预览版**，npm 包尚未发布，不建议用于生产环境。项目正在适配 DeepSeek Harness `0.1.2-rc.1`；core/session/subagent 与 browser source bridge 已经落地，但 0.1.2 的 client package graph 已从旧 `dsh-client-runtime` 迁移到新的 client module system。完整 npm package set、client manifest/lockfile migration 与 clean-profile/Web 验证完成前，不会把它标记为已验证安装基线。
 
 <p align="center">
   <img src="docs/assets/compatibility-status.svg" alt="DSHelm compatibility status: source preview, verified DSH install baseline, and current DSH source target" width="100%">
@@ -99,11 +99,11 @@ resolver contract 与 execution contract 是两个不同的故障域。把它们
 DSHelm 的兼容性声明采用两层口径：
 
 - **Verified install baseline — `0.1.0-rc.7`**：已经完成 package/runtime、clean HOME、profile composition、bounded boot、doctor / explain / uninstall 验证。
-- **Current source target — `0.1.2-rc.1`**：DeepSeek Harness 于 **2026-09-03** 发布的最新 source release。DSHelm 已针对已确认的 API 变化加入 forward-compatible bridge，但仍等待完整 npm package set 与 clean-profile promotion gate。
+- **Current source target — `0.1.2-rc.1`**：DeepSeek Harness 于 **2026-09-03** 发布的最新 source release。DSHelm 已完成已确认的 core/session/subagent bridge，并把 Web control-plane browser source 从已移除的 legacy runtime 类型依赖中解耦；**0.1.2 client package graph migration 与 Web bundle verification 仍是 promotion blocker**。
 
-当前机器可读状态见 [`compatibility.json`](compatibility.json)。上游 source target 对应 [`dsh-v0.1.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-rc.1)。
+当前机器可读状态见 [`compatibility.json`](compatibility.json)，完整 seam-by-seam 审计见 [`docs/compatibility/dsh-0.1.2-rc.1.md`](docs/compatibility/dsh-0.1.2-rc.1.md)。上游 source target 对应 [`dsh-v0.1.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-rc.1)。
 
-### 已处理的 0.1.2 API 变化
+### 已处理 / 已定位的 0.1.2 变化
 
 | 上游变化 | DSHelm 处理 |
 | --- | --- |
@@ -111,8 +111,10 @@ DSHelm 的兼容性声明采用两层口径：
 | `SubagentCapabilities` 新增 `agentOptions` gate | DSHelm provider 在 runtime 声明 `agentOptions: true`，同时保持旧类型可编译 |
 | `AgentOptions` 新增 `reasoningEffort` | 新 host 直接获得 reasoning option；legacy host 继续通过 `request/header` seed 恢复 reasoning |
 | subagent caller 可显式选择 provider / model / reasoning / max output | DSHelm 保持 policy resolution 为来源，并映射到官方 `agentOptions` seam；max-output policy 尚未宣称实现 |
+| 旧 `packages/client/runtime` / `@deepseek-ai/dsh-client-runtime` 从 0.1.2 source tree 消失 | browser source 改为只依赖实际使用的 `sessions.binding(...).session.projections` 结构；不再 import legacy runtime client types |
+| `@deepseek-ai/dsh-client-modules` 成为 `dsh.client` 扫描、boot graph、`/plugins` bundle 与 lazy materialization 的模块系统 | 已审计新机制；`@dshelm/dsh` manifest 的 dependency/inject set 必须在 exact-version + lockfile promotion 时整体迁移并用真实 Web load 验证 |
 
-这里刻意没有直接把所有 package manifest 改成 `0.1.2-rc.1`：上游 npm 发布在 2026-09-03 处于滚动状态，而且 DSHelm 当前 lockfile 仍属于已验证旧基线。**版本 promotion 必须和完整 package availability、lockfile regeneration、fresh install/profile boot 一起完成。**
+这里刻意没有直接把所有 package manifest 改成 `0.1.2-rc.1`：上游 npm 发布在 2026-09-03 处于滚动状态，而且 DSHelm 当前 lockfile 仍属于已验证旧基线。**版本 promotion 必须和完整 package availability、client module graph、lockfile regeneration、fresh install/profile boot/Web client materialization 一起完成。**
 
 <details>
 <summary><strong>为什么不使用宽泛的“支持 0.1.x”声明？</strong></summary>
@@ -170,7 +172,7 @@ dshelm                   CLI · init · doctor · auth · explain · uninstall
 
 | Issue | 下一阶段 |
 | --- | --- |
-| [#7 — npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | 完成 DSH dependency promotion、registry publish、clean-HOME install/uninstall evidence |
+| [#7 — npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | 完成 DSH dependency + client-module promotion、registry publish、clean-HOME/Web install/uninstall evidence |
 | [#8 — platform matrix](https://github.com/Altairpaca/dshelm/issues/8) | Linux、macOS Apple Silicon、Windows 11 + WSL2 可复现验证 |
 | [#9 — first-run evidence](https://github.com/Altairpaca/dshelm/issues/9) | deterministic execution fixture 已落地；继续补 provider-backed evidence |
 | [#10 — contributor entry points](https://github.com/Altairpaca/dshelm/issues/10) | provider/model evidence、平台验证、文档、routing examples、reproducible bugs |
