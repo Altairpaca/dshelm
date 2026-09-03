@@ -8,6 +8,8 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+const cliPackageManifest = JSON.parse(await readFile(join(process.cwd(), 'packages/cli/package.json'), 'utf8')) as { version: string }
+
 describe('DSHelm user command projections', () => {
   it('renders model inventory and evidence-backed explanation', () => {
     expect(modelInspectLines(BASELINE_KNOWLEDGE_BUNDLE).some((line) => line.startsWith('deepseek/deepseek-v4-flash'))).toBe(true)
@@ -54,17 +56,18 @@ describe('DSHelm user command projections', () => {
     await expect(readFile(join(env.DSHELM_CONFIG_DIR, 'credentials', 'credentials.json'), 'utf8')).rejects.toThrow()
   })
 
-  it('installs the official DSH profile without creating project credentials', async () => {
+  it('installs the DSH bundle at the same version as the installed CLI', async () => {
     const cwd = await mkdtemp(join(tmpdir(), 'dshelm-init-'))
     const dshHome = join(cwd, 'dsh-home')
+    const expectedBundleSpec = `@dshelm/dsh@${cliPackageManifest.version}`
     const result = await initProfile(new AuthRegistry(), { ...defaultAuthProbeContext(), commandExists: async () => false }, {
       cwd,
       dshHome,
       now: () => new Date('2026-08-18T00:00:00.000Z'),
       installDshProfile: async ({ profileDir, bundleSpecs }) => {
-        expect(bundleSpecs).toEqual(['@dshelm/dsh@0.3.0-alpha.0'])
+        expect(bundleSpecs).toEqual([expectedBundleSpec])
         await mkdir(join(profileDir, 'node_modules', '@dshelm', 'dsh'), { recursive: true })
-        await writeFile(join(profileDir, 'node_modules', '@dshelm', 'dsh', 'package.json'), JSON.stringify({ name: '@dshelm/dsh', version: '0.3.0-alpha.0' }))
+        await writeFile(join(profileDir, 'node_modules', '@dshelm', 'dsh', 'package.json'), JSON.stringify({ name: '@dshelm/dsh', version: cliPackageManifest.version }))
         await writeFile(join(profileDir, 'package.json'), JSON.stringify({ name: 'dsh-profile-dshelm', private: true, dependencies: { '@dshelm/dsh': 'fixture' }, dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', '@dshelm/dsh'] } } }))
       },
     })
