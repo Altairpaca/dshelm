@@ -1,24 +1,33 @@
-## 改了什么 / What changed
+## Problem / 问题
 
-<!-- Describe the change concisely. -->
+<!-- What user, contributor, compatibility, or maintenance problem does this PR address? -->
 
-## 为什么属于 DSHelm / Why this belongs in DSHelm
+Closes #
 
-<!-- Explain the policy/control-plane responsibility and the DSH capability it composes. -->
+## Change / 修改
 
-## 验证 / Validation
+<!-- Describe the smallest change made to address the problem. Keep unrelated refactors out of this PR. -->
 
-<!-- 测试、真实 DSH 运行、截图、Resolution Trace 等。 -->
+## Evidence / 验证证据
 
-## 兼容性与策略影响 / Compatibility and policy impact
+<!-- Tests, real DSH run, screenshots, Resolution Trace, compatibility/source evidence, etc. -->
 
-- [ ] 没有改变公开策略语义
-- [ ] 改变了路由优先级，且已有文档和测试
-- [ ] 改变了迁移/兼容行为，且已说明有损映射
+- [ ] `pnpm docs:check` (if docs/community surfaces changed)
+- [ ] `pnpm typecheck` (if TypeScript changed)
+- [ ] `pnpm test` (if behavior changed)
+- [ ] `pnpm build` (if packages/build output changed)
 
-## 检查项 / Checklist
+## Compatibility and policy impact / 兼容性与策略影响
 
-- [ ] 我优先使用 DSH 公共扩展接口，没有修改 DSH Core。
-- [ ] 我没有引入缺少许可证的第三方代码或素材。
-- [ ] 我为架构或用户可见行为更新了文档。
-- [ ] 用户界面改动附有桌面和窄屏截图。
+- [ ] No public routing/configuration/compatibility semantics changed
+- [ ] Routing or policy semantics changed and are covered by tests/docs
+- [ ] Migration or compatibility behavior changed and lossy/unknown cases are explicit
+- [ ] Authentication/provider behavior changed and secret boundaries remain intact
+
+## Checklist / 检查项
+
+- [ ] The change stays within DSHelm's documented Core / DSH boundary.
+- [ ] Non-trivial scope was aligned in an Issue or Discussion before implementation.
+- [ ] No unlicensed third-party code/assets or sensitive credentials/private data are included.
+- [ ] User-visible behavior and compatibility claims are backed by reproducible evidence.
+- [ ] UI changes include desktop and narrow-screen evidence when applicable.
