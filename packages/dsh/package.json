@@ -1,6 +1,24 @@
 {
   "name": "@dshelm/dsh",
   "version": "0.3.0-alpha.0",
+  "description": "DeepSeek Harness adapter and control-plane integration for DSHelm.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Altairpaca/dshelm.git",
+    "directory": "packages/dsh"
+  },
+  "homepage": "https://github.com/Altairpaca/dshelm#readme",
+  "bugs": {
+    "url": "https://github.com/Altairpaca/dshelm/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "model-routing",
+    "agent-orchestration"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -20,6 +38,12 @@
     "README.md",
     "lib"
   ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
