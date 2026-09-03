@@ -1,7 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
-const documents = ['README.md', 'README.en.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'SECURITY.md', 'docs/community-roadmap.zh-CN.md', 'docs/desktop.zh-CN.md']
+const documents = [
+  'README.md',
+  'README.en.md',
+  'README.zh-CN.md',
+  'CONTRIBUTING.md',
+  'SECURITY.md',
+  'CHANGELOG.md',
+  'docs/RELEASING.md',
+  'docs/community-roadmap.zh-CN.md',
+  'docs/desktop.zh-CN.md',
+]
 const failures = []
 
 for (const document of documents) {
