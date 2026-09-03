@@ -1,33 +1,110 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
-  <title id="title">DSHelm</title>
-  <desc id="desc">DSHelm routes planning, execution, and review through an explainable control plane.</desc>
-  <rect width="1200" height="320" rx="16" fill="#0b1020"/>
-  <path d="M0 250h1200" stroke="#23304a"/>
-  <g transform="translate(72 68)">
-    <circle cx="88" cy="88" r="70" fill="none" stroke="#7dd3fc" stroke-width="6"/>
-    <path d="M88 0v27M88 149v27M0 88h27M149 88h27" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
-    <path d="m114 43-17 57-54 22 33-36z" fill="#f97360"/>
-    <circle cx="88" cy="88" r="9" fill="#f8fafc"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">DSHelm — explainable model routing for DeepSeek Harness</title>
+  <desc id="desc">A visual control plane routes tasks through planner, worker, and reviewer roles while preserving an observable Resolution Trace.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#070b14"/>
+      <stop offset="0.55" stop-color="#0b1424"/>
+      <stop offset="1" stop-color="#101a2d"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.52" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#38bdf8" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#94a3b8" stroke-opacity="0.055" stroke-width="1"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="360" rx="22" fill="url(#bg)"/>
+  <rect width="1200" height="360" rx="22" fill="url(#grid)"/>
+  <ellipse cx="850" cy="180" rx="330" ry="230" fill="url(#glow)"/>
+  <path d="M0 316H1200" stroke="#334155" stroke-opacity="0.55"/>
+
+  <!-- helm mark -->
+  <g transform="translate(66 66)">
+    <circle cx="52" cy="52" r="45" fill="#0b1628" stroke="#38bdf8" stroke-width="2.5"/>
+    <circle cx="52" cy="52" r="30" fill="none" stroke="#64748b" stroke-opacity="0.65"/>
+    <path d="M52 0v17M52 87v17M0 52h17M87 52h17M16 16l12 12M76 76l12 12M88 16L76 28M28 76L16 88" stroke="#94a3b8" stroke-width="2.3" stroke-linecap="round"/>
+    <path d="m70 29-12 31-31 13 19-24z" fill="url(#accent)"/>
+    <circle cx="52" cy="52" r="5.5" fill="#f8fafc"/>
   </g>
-  <text x="300" y="120" fill="#f8fafc" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="68" font-weight="700">DSHelm</text>
-  <text x="302" y="172" fill="#cbd5e1" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="25">DeepSeek Harness 的可解释多模型调度层</text>
-  <g transform="translate(302 216)" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="18">
-    <circle cx="10" cy="10" r="8" fill="#7dd3fc"/>
-    <text x="30" y="17" fill="#e2e8f0">规划</text>
-    <path d="M88 10h58" stroke="#475569" stroke-width="2"/>
-    <circle cx="156" cy="10" r="8" fill="#f97360"/>
-    <text x="176" y="17" fill="#e2e8f0">执行</text>
-    <path d="M234 10h58" stroke="#475569" stroke-width="2"/>
-    <circle cx="302" cy="10" r="8" fill="#facc15"/>
-    <text x="322" y="17" fill="#e2e8f0">审核</text>
+
+  <!-- title block -->
+  <g font-family="Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <text x="190" y="106" fill="#f8fafc" font-size="64" font-weight="760" letter-spacing="-1.8">DSHelm</text>
+    <text x="192" y="145" fill="#cbd5e1" font-size="21" font-weight="500">Explainable model routing for DeepSeek Harness</text>
+    <text x="192" y="181" fill="#7dd3fc" font-size="14" font-weight="650" letter-spacing="1.6">DSH-NATIVE  ·  EVIDENCE-BACKED  ·  POLICY-FIRST</text>
+
+    <g transform="translate(192 213)">
+      <rect width="176" height="34" rx="17" fill="#0f2234" stroke="#1e4b67"/>
+      <circle cx="18" cy="17" r="5" fill="#38bdf8"/>
+      <text x="32" y="22" fill="#bae6fd" font-size="13" font-weight="600">0.3.0-alpha source</text>
+    </g>
+    <g transform="translate(380 213)">
+      <rect width="214" height="34" rx="17" fill="#171b34" stroke="#373c72"/>
+      <circle cx="18" cy="17" r="5" fill="#818cf8"/>
+      <text x="32" y="22" fill="#c7d2fe" font-size="13" font-weight="600">DSH 0.1.2-rc.1 target</text>
+    </g>
   </g>
-  <g transform="translate(820 58)" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="17">
-    <rect width="310" height="198" rx="10" fill="#121a2b" stroke="#334155"/>
-    <text x="24" y="38" fill="#94a3b8">ROUTE / EXPLAIN</text>
-    <text x="24" y="78" fill="#e2e8f0">planner</text><text x="140" y="78" fill="#7dd3fc">v4-pro</text>
-    <text x="24" y="112" fill="#e2e8f0">worker</text><text x="140" y="112" fill="#f97360">v4-flash</text>
-    <text x="24" y="146" fill="#e2e8f0">reviewer</text><text x="140" y="146" fill="#facc15">v4-pro</text>
-    <path d="M24 168h262" stroke="#334155"/>
-    <text x="24" y="190" fill="#94a3b8">trace: visible</text>
+
+  <!-- routing control plane -->
+  <g transform="translate(655 48)" filter="url(#shadow)" font-family="Inter,ui-sans-serif,system-ui,sans-serif">
+    <rect width="474" height="246" rx="18" fill="#0b1323" stroke="#334155"/>
+    <text x="24" y="31" fill="#64748b" font-size="11" font-weight="700" letter-spacing="1.4">CONTROL PLANE / RESOLUTION TRACE</text>
+
+    <g transform="translate(24 52)">
+      <rect width="100" height="34" rx="8" fill="#111c2d" stroke="#334155"/>
+      <text x="50" y="22" text-anchor="middle" fill="#cbd5e1" font-size="12" font-weight="650">TASK</text>
+      <path d="M104 17h35" stroke="#475569" stroke-width="2"/>
+      <path d="m135 13 7 4-7 4" fill="none" stroke="#475569" stroke-width="2"/>
+
+      <rect x="148" width="114" height="34" rx="8" fill="#102436" stroke="#1e6689"/>
+      <text x="205" y="22" text-anchor="middle" fill="#7dd3fc" font-size="12" font-weight="650">POLICY</text>
+
+      <path d="M266 17h28" stroke="#475569" stroke-width="2"/>
+      <path d="m290 13 7 4-7 4" fill="none" stroke="#475569" stroke-width="2"/>
+      <rect x="302" width="124" height="34" rx="8" fill="#171b34" stroke="#4f46e5"/>
+      <text x="364" y="22" text-anchor="middle" fill="#c7d2fe" font-size="12" font-weight="650">EVIDENCE</text>
+    </g>
+
+    <path d="M229 94v18M229 112H90M229 112H378" fill="none" stroke="#334155" stroke-width="1.5"/>
+    <path d="M90 112v13M229 112v13M378 112v13" stroke="#334155" stroke-width="1.5"/>
+
+    <g transform="translate(24 126)" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">
+      <rect width="132" height="62" rx="10" fill="#0c1d2a" stroke="#155e75"/>
+      <circle cx="16" cy="18" r="5" fill="#38bdf8"/>
+      <text x="28" y="22" fill="#e2e8f0">planner</text>
+      <text x="16" y="45" fill="#7dd3fc">reasoning-pro</text>
+
+      <rect x="147" width="132" height="62" rx="10" fill="#1b1825" stroke="#9d174d"/>
+      <circle cx="163" cy="18" r="5" fill="#f472b6"/>
+      <text x="175" y="22" fill="#e2e8f0">worker</text>
+      <text x="163" y="45" fill="#f9a8d4">fast-worker</text>
+
+      <rect x="294" width="132" height="62" rx="10" fill="#1c1b14" stroke="#854d0e"/>
+      <circle cx="310" cy="18" r="5" fill="#facc15"/>
+      <text x="322" y="22" fill="#e2e8f0">reviewer</text>
+      <text x="310" y="45" fill="#fde68a">reasoning-pro</text>
+    </g>
+
+    <g transform="translate(24 204)" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="11">
+      <text x="0" y="12" fill="#64748b">trace</text>
+      <path d="M38 8h248" stroke="url(#accent)" stroke-width="2"/>
+      <circle cx="62" cy="8" r="3" fill="#38bdf8"/>
+      <circle cx="164" cy="8" r="3" fill="#818cf8"/>
+      <circle cx="268" cy="8" r="3" fill="#f472b6"/>
+      <text x="301" y="12" fill="#94a3b8">selected · scored · explained</text>
+    </g>
   </g>
+
+  <text x="66" y="336" fill="#64748b" font-family="ui-monospace,SFMono-Regular,Consolas,monospace" font-size="12">task requirements → hard gates → evidence → policy overrides → DSH execution → trace</text>
 </svg>
