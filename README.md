@@ -96,6 +96,8 @@ DSHelm Core 只负责策略、配置、路由和解释；任务执行仍由 DSH 
 
 项目同步维护简体中文和英文文档，并优先把兼容性结论建立在可复现证据上：DSH 版本、DeepSeek/Qwen/本地模型、Linux、macOS、Windows 11 + WSL2，以及密钥、费用、网络和数据位置等边界都应有明确记录。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
 
+使用问题和渠道选择见 [`SUPPORT.md`](SUPPORT.md)，贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，社区参与规范见 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)。中英文 Issue 和 PR 都欢迎。
+
 ## 与 DSH 社区一起演进
 
 DSHelm 是 DSH 生态的一部分，不是 DSH 的替代品。项目会优先在官方 Discussion 中讨论公共接口和可复用契约：
@@ -113,7 +115,5 @@ DSHelm 是 DSH 生态的一部分，不是 DSH 的替代品。项目会优先在
 - 无法可靠确认的认证状态会显示为 `unknown`，不会猜测为已登录。
 - 模型软评分是带来源和置信度的维护者启发式，不是模型排行榜。
 - DSHelm 不隶属于 DeepSeek，也不代表文中提到的模型或厂商。
-
-开发环境、测试命令和贡献边界见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。中英文 Issue 和 PR 都欢迎。
 
 Apache License 2.0。
