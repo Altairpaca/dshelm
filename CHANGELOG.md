@@ -14,6 +14,8 @@ DSHelm is still in alpha. Entries before the first public npm publication are **
 - Added a CI gate for publishable package metadata and reduced duplicate/stale branch runs.
 - Kept `dshelm init`'s default `@dshelm/dsh` bundle version aligned with the installed CLI package version.
 - Added a machine-readable publishable package graph and version-independent pack/install verification, removing release-version literals from CI and reading the verified DSH package baseline from `compatibility.json`.
+- Audited DeepSeek Harness `0.1.2-rc.1` as the current source target and added forward-compatible bridges for the new Session snapshot API plus subagent `agentOptions` / `reasoningEffort` semantics, while keeping `0.1.0-rc.7` as the verified install baseline until the full npm graph and clean-profile journey pass.
+- Rebuilt the bilingual README landing experience around a visual routing flow, explicit compatibility/evidence cards, a real control-plane screenshot, and clearer separation between demonstrated contracts and unverified provider/runtime claims.
 
 ## 0.3.0-alpha.0 — 2026-08-19 — source milestone
 
