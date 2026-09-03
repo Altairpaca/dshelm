@@ -53,6 +53,16 @@
 
 当前发布状态仍是**源码预览**。npm 包、三平台完整验证以及可复用首次运行 fixture 均以对应 Issue 的验收条件为准，不提前宣称完成。
 
+### 先看一次可解释路由
+
+不配置 provider 或凭据，也可以先运行离线 fixture，查看 planner、两个 worker 和 reviewer 如何经过同一套 resolver 选择模型并生成 Resolution Trace：
+
+```bash
+pnpm example:first-run
+```
+
+这个示例只验证**路由与解释契约**，不会调用真实 provider、工具或 agent task。完整说明见 [`examples/README.md`](examples/README.md)。
+
 ## 从源码体验
 
 环境要求：Node.js `>=22.19.0`、pnpm `11.7.0`、可在 `PATH` 中调用的 DSH CLI。当前验证版本见 [`compatibility.json`](compatibility.json)。macOS、Linux 或 Windows 11 + WSL2 均可尝试，Windows 原生体验仍待社区验证。
