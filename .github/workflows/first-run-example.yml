@@ -2,6 +2,8 @@ name: first-run-example
 
 on:
   push:
+    branches:
+      - main
     paths:
       - 'examples/**'
       - 'packages/core/**'
@@ -16,6 +18,10 @@ on:
       - 'pnpm-lock.yaml'
       - '.github/workflows/first-run-example.yml'
   workflow_dispatch:
+
+concurrency:
+  group: first-run-example-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   offline-routing-fixture:
