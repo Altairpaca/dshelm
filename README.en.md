@@ -30,15 +30,16 @@ The next public milestones are tracked as community issues:
 
 The project remains a **source preview** until those release and verification gates are actually satisfied.
 
-### Inspect routing before configuring a provider
+### Inspect routing and execution before configuring a provider
 
-A credential-free offline fixture shows how a planner, two workers, and a reviewer pass through the same resolver and emit Resolution Trace data:
+Two credential-free fixtures make the evidence boundary explicit:
 
 ```bash
 pnpm example:first-run
+pnpm example:dsh-execution
 ```
 
-This example validates the **routing and explanation contract only**. It performs no real provider, tool, or agent-task execution. See [`examples/README.md`](examples/README.md) for the expected output and scope.
+`example:first-run` validates the **routing and explanation contract only**. `example:dsh-execution` goes one layer further: it uses the real DSH Context, agent factory and AgentLoop for planner → two bounded workers → reviewer, while keeping model responses deterministic through a synthetic provider. It therefore proves that resolved routes reach actual DSH requests without claiming external-provider connectivity or model quality. See [`examples/README.md`](examples/README.md) for the exact scope and output.
 
 ## Source preview
 

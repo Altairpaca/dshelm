@@ -53,15 +53,16 @@
 
 当前发布状态仍是**源码预览**。npm 包、三平台完整验证以及可复用首次运行 fixture 均以对应 Issue 的验收条件为准，不提前宣称完成。
 
-### 先看一次可解释路由
+### 不配置 provider，先检查路由和执行链路
 
-不配置 provider 或凭据，也可以先运行离线 fixture，查看 planner、两个 worker 和 reviewer 如何经过同一套 resolver 选择模型并生成 Resolution Trace：
+仓库提供两个零凭据 fixture，分别验证两层契约：
 
 ```bash
 pnpm example:first-run
+pnpm example:dsh-execution
 ```
 
-这个示例只验证**路由与解释契约**，不会调用真实 provider、工具或 agent task。完整说明见 [`examples/README.md`](examples/README.md)。
+`example:first-run` 只验证 **resolver 与 Resolution Trace**。`example:dsh-execution` 再向前一层：planner → 两个 bounded workers → reviewer 会通过真实 DSH `Context`、agent factory 与 `AgentLoop` 执行，同时使用 deterministic synthetic provider 生成模型响应。后者可以证明 DSHelm 解析出的 provider/model 确实进入真实 DSH request，但不代表任何外部 provider、网络、认证或模型质量已经验证。两者的证据边界和输出结构见 [`examples/README.md`](examples/README.md)。
 
 ## 从源码体验
 
