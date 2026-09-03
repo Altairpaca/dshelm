@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 250" role="img" aria-labelledby="title desc">
+  <title id="title">DSHelm compatibility status</title>
+  <desc id="desc">Three cards show the DSHelm source release, the verified DeepSeek Harness install baseline, and the current DeepSeek Harness source target.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0f1b"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="250" rx="20" fill="url(#bg)"/>
+  <g font-family="Inter,ui-sans-serif,system-ui,sans-serif">
+    <text x="42" y="42" fill="#f8fafc" font-size="20" font-weight="720">Compatibility is evidence, not a version badge</text>
+    <text x="42" y="66" fill="#94a3b8" font-size="12">Source target and verified install baseline stay separate until the full npm/profile journey passes.</text>
+
+    <g transform="translate(42 91)">
+      <rect width="342" height="120" rx="14" fill="#111927" stroke="#334155"/>
+      <rect x="18" y="17" width="86" height="24" rx="12" fill="#172033"/>
+      <text x="61" y="33" text-anchor="middle" fill="#cbd5e1" font-size="10" font-weight="750" letter-spacing="1">DSHELM</text>
+      <text x="18" y="68" fill="#f8fafc" font-size="23" font-weight="740">0.3.0-alpha</text>
+      <text x="18" y="91" fill="#94a3b8" font-size="12">source preview · npm unpublished</text>
+      <circle cx="318" cy="28" r="6" fill="#f97360"/>
+      <text x="18" y="108" fill="#64748b" font-size="10">release graph + clean-install gates</text>
+    </g>
+
+    <g transform="translate(429 91)">
+      <rect width="342" height="120" rx="14" fill="#0e2027" stroke="#166534"/>
+      <rect x="18" y="17" width="132" height="24" rx="12" fill="#123026"/>
+      <text x="84" y="33" text-anchor="middle" fill="#86efac" font-size="10" font-weight="750" letter-spacing="1">VERIFIED INSTALL</text>
+      <text x="18" y="68" fill="#f8fafc" font-size="23" font-weight="740">DSH 0.1.0-rc.7</text>
+      <text x="18" y="91" fill="#a7f3d0" font-size="12">clean HOME · profile boot · pack/install</text>
+      <circle cx="318" cy="28" r="6" fill="#22c55e"/>
+      <text x="18" y="108" fill="#64748b" font-size="10">current tested npm baseline</text>
+    </g>
+
+    <g transform="translate(816 91)">
+      <rect width="342" height="120" rx="14" fill="#171a31" stroke="#4f46e5"/>
+      <rect x="18" y="17" width="128" height="24" rx="12" fill="#24274a"/>
+      <text x="82" y="33" text-anchor="middle" fill="#c7d2fe" font-size="10" font-weight="750" letter-spacing="1">SOURCE TARGET</text>
+      <text x="18" y="68" fill="#f8fafc" font-size="23" font-weight="740">DSH 0.1.2-rc.1</text>
+      <text x="18" y="91" fill="#c7d2fe" font-size="12">session + subagent bridges landed</text>
+      <circle cx="318" cy="28" r="6" fill="#818cf8"/>
+      <text x="18" y="108" fill="#64748b" font-size="10">npm promotion / clean-profile verification pending</text>
+    </g>
+  </g>
+</svg>
