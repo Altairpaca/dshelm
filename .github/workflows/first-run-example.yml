@@ -1,0 +1,45 @@
+name: first-run-example
+
+on:
+  push:
+    paths:
+      - 'examples/**'
+      - 'packages/core/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/first-run-example.yml'
+  pull_request:
+    paths:
+      - 'examples/**'
+      - 'packages/core/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/first-run-example.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-routing-fixture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify fixture contract
+        run: pnpm vitest run examples/first-run-routing.test.ts
+      - name: Record first-run trace
+        run: pnpm example:first-run > first-run-output.json
+      - name: Validate recorded output
+        run: |
+          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('first-run-output.json','utf8')); if(x.fixture!=='offline-routing-only'||x.steps.length!==4) process.exit(1); const roles=x.steps.map(s=>s.resolution.role).join(','); if(roles!=='planner,worker,worker,reviewer') process.exit(1);"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: first-run-resolution-trace
+          path: first-run-output.json
+          if-no-files-found: error
+          retention-days: 14
