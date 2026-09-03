@@ -40,6 +40,19 @@
 | npm 一键安装 | 发布门槛 | 尚未开放，当前只能使用下方源码预览流程 |
 | 桌面安装包 | 生态协作 | DSHelm 不另造桌面壳，跟随 DSH 桌面宿主的 profile/plugin 能力 |
 
+## 2026 年 9 月维护进展
+
+当前 `main` 已包含 `0.3.0-alpha` 的认证与模型编排、DSH profile 安装、`doctor` / `explain`、Resolution Trace、Web 控制面板和 OmO 只读迁移能力。下一阶段已经拆成可公开跟踪的社区任务：
+
+| 任务 | 目标 |
+| --- | --- |
+| [#7 npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | 发布可验证的公共 alpha，并完成 clean-HOME 安装 / 卸载证据 |
+| [#8 跨平台安装矩阵](https://github.com/Altairpaca/dshelm/issues/8) | 收集 Linux、macOS Apple Silicon、Windows 11 + WSL2 的可复现安装记录 |
+| [#9 首次运行示例](https://github.com/Altairpaca/dshelm/issues/9) | 提供 planner → workers → reviewer 的 credential-light 示例和完整 trace |
+| [#10 贡献者入口](https://github.com/Altairpaca/dshelm/issues/10) | 明确 provider/model evidence、平台验证、文档、示例和 bug 的贡献规范 |
+
+当前发布状态仍是**源码预览**。npm 包、三平台完整验证以及可复用首次运行 fixture 均以对应 Issue 的验收条件为准，不提前宣称完成。
+
 ## 从源码体验
 
 环境要求：Node.js `>=22.19.0`、pnpm `11.7.0`、可在 `PATH` 中调用的 DSH CLI。当前验证版本见 [`compatibility.json`](compatibility.json)。macOS、Linux 或 Windows 11 + WSL2 均可尝试，Windows 原生体验仍待社区验证。
@@ -79,9 +92,9 @@ node packages/cli/dist/index.js uninstall --yes
 
 DSHelm Core 只负责策略、配置、路由和解释；任务执行仍由 DSH 及其插件完成。详细边界见[架构说明](docs/ARCHITECTURE.md)。
 
-## 面向中国用户
+## 社区与兼容性
 
-我们优先补齐简体中文文档和故障说明、DeepSeek/Qwen/本地模型兼容状态、Windows 11 + WSL2 安装验证，以及密钥、费用、网络和数据位置的透明说明。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
+项目同步维护简体中文和英文文档，并优先把兼容性结论建立在可复现证据上：DSH 版本、DeepSeek/Qwen/本地模型、Linux、macOS、Windows 11 + WSL2，以及密钥、费用、网络和数据位置等边界都应有明确记录。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
 
 ## 与 DSH 社区一起演进
 
@@ -92,7 +105,7 @@ DSHelm 是 DSH 生态的一部分，不是 DSH 的替代品。项目会优先在
 - [`dsh doctor` 社区契约 #1719](https://github.com/deepseek-ai/deepseek-harness/discussions/1719)
 - [安全的 CLI provider 与 fallback #3283](https://github.com/deepseek-ai/deepseek-harness/discussions/3283)
 
-欢迎提交一个真实任务、一次安装记录、一个路由结果，或 Windows、WSL2、本地模型和国内 provider 的验证结果。请使用 [GitHub Issues](https://github.com/Altairpaca/dshelm/issues) 报告可复现问题；涉及 DSH 公共能力的讨论会同步回对应的官方 Discussion。
+欢迎提交一个真实任务、一次安装记录、一个路由结果，或 Windows、WSL2、本地模型和 provider 的验证结果。请使用 [GitHub Issues](https://github.com/Altairpaca/dshelm/issues) 报告可复现问题；涉及 DSH 公共能力的讨论会同步回对应的官方 Discussion。
 
 ## 安全与事实边界
 
