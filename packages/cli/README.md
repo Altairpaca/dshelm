@@ -13,6 +13,6 @@ The DSHelm command-line interface for installation diagnostics, authentication s
 
 The CLI composes `@dshelm/core`, `@dshelm/dsh`, `@dshelm/auth`, `@dshelm/model-knowledge`, and `@dshelm/compat-omo`. It does not replace the DeepSeek Harness runtime.
 
-See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [support guide](../../SUPPORT.md) for the current contract and limitations.
+See the [project README](../../README.en.md), [architecture](../../docs/ARCHITECTURE.md), and [contribution guide](../../CONTRIBUTING.md) for the current contract and limitations.
 
 Apache License 2.0.
