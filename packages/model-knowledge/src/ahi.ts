@@ -4,6 +4,7 @@ import type { CapabilityKind, KnowledgeBundle, ModelKnowledgeRecord } from './co
 
 const sha256 = z.string().regex(/^[0-9a-f]{64}$/)
 const nullableNonEmpty = z.string().min(1).nullable()
+const offsetAwareTimestamp = z.string().datetime({ offset: true })
 
 const metricMean = z.object({
   observed: z.number().int().nonnegative(),
@@ -102,6 +103,12 @@ function nonEmpty(value: string, field: string): string {
   return value
 }
 
+function requireOffsetAwareTimestamp(value: string, field: string): void {
+  if (!offsetAwareTimestamp.safeParse(value).success) {
+    throw new Error(`${field} must be an offset-aware ISO 8601 timestamp`)
+  }
+}
+
 function validateMapping(mapping: AhiEvidenceMapping): void {
   nonEmpty(mapping.provider, 'provider')
   nonEmpty(mapping.displayName, 'displayName')
@@ -111,7 +118,7 @@ function validateMapping(mapping: AhiEvidenceMapping): void {
   if (!Number.isInteger(mapping.staleAfterDays) || mapping.staleAfterDays <= 0) {
     throw new Error('staleAfterDays must be a positive integer')
   }
-  if (!Number.isFinite(Date.parse(mapping.observedAt))) throw new Error('observedAt must be a valid timestamp')
+  requireOffsetAwareTimestamp(mapping.observedAt, 'observedAt')
 }
 
 function evidenceId(summary: AhiSummary, mapping: AhiEvidenceMapping): string {
@@ -151,7 +158,7 @@ export function knowledgeBundleFromAhiSummaries(
 ): KnowledgeBundle {
   if (inputs.length === 0) throw new Error('at least one AHI summary is required')
   nonEmpty(options.bundleId, 'bundleId')
-  if (!Number.isFinite(Date.parse(options.generatedAt))) throw new Error('generatedAt must be a valid timestamp')
+  requireOffsetAwareTimestamp(options.generatedAt, 'generatedAt')
 
   const records = new Map<string, ModelKnowledgeRecord>()
   const capabilities = new Map<string, Set<AhiSoftCapability>>()
