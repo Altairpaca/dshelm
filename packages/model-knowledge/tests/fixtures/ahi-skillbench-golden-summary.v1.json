@@ -1,0 +1,36 @@
+{
+  "schema_version": "ahi.summary/v1",
+  "benchmark": "skillbench-fixture",
+  "benchmark_version": "1",
+  "harness": "fixture-harness",
+  "harness_version": "1.2.3",
+  "model": "fixture-model",
+  "model_version": "2026-08-31",
+  "configuration_sha256": "32bc35c2c9567835be1c0f50129678d5eebcda5f84509149425b6d87a27434fc",
+  "environment_sha256": "0d435a1e8407264720c153cf519ba81edca28a44033b0e36933a6f4c7825e730",
+  "task_set_sha256": "4f6eeaba335444e611bb2629e2078976937e32863dde934ff7f1ff03244e1ce1",
+  "distinct_tasks": 1,
+  "observations": 1,
+  "successes": 1,
+  "success_rate": 1.0,
+  "success_rate_wilson95": {
+    "low": 0.20654931437723742,
+    "high": 1.0
+  },
+  "cost_usd": {
+    "observed": 1,
+    "mean": 0.01
+  },
+  "latency_ms": {
+    "observed": 1,
+    "median": 1250.0
+  },
+  "input_tokens": {
+    "observed": 1,
+    "mean": 100
+  },
+  "output_tokens": {
+    "observed": 1,
+    "mean": 20
+  }
+}
