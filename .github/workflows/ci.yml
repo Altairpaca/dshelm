@@ -23,6 +23,8 @@ jobs:
         run: node scripts/check-community-docs.mjs
       - name: Publishable package contract
         run: node scripts/check-package-metadata.mjs
+      - name: Release automation contract
+        run: npm run release:check
 
   verify:
     runs-on: ubuntu-latest
