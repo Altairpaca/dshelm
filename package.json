@@ -16,7 +16,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "example:first-run": "tsx examples/first-run-routing.ts",
-    "example:dsh-execution": "pnpm build && tsx examples/dsh-execution.ts",
+    "example:dsh-execution": "node scripts/run-dsh-execution-example.mjs",
     "qa:pack-install": "bash scripts/qa-pack-install.sh",
     "qa:dsh-release-compat": "bash scripts/qa-pack-install.sh --with-dsh-release",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
