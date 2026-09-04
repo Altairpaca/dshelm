@@ -55,8 +55,23 @@ mkdir -p "$FRESH_DIR" "$DSH_CLI_DIR"
 stage "install external DSH compatibility target ($DSH_VERSION)"
 # Keep the DSH CLI in an isolated prefix, but use pnpm so Actions can reuse the
 # already-restored pnpm content-addressed store instead of cold-resolving the
-# large rc.7 package graph through a separate npm cache on every PR.
-printf '{"private":true}\n' > "$DSH_CLI_DIR/package.json"
+# large release graph through a separate npm cache on every PR. pnpm 11 blocks
+# dependency build scripts unless they are explicitly approved; the allowlist
+# below mirrors scripts that a normal npm install of the published DSH CLI runs.
+cat > "$DSH_CLI_DIR/package.json" <<'JSON'
+{
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@deepseek-ai/dsh-subprocess-local",
+      "@google/genai",
+      "koffi",
+      "node-pty",
+      "protobufjs"
+    ]
+  }
+}
+JSON
 pnpm --dir "$DSH_CLI_DIR" add --save-exact --prefer-offline "@deepseek-ai/dsh@$DSH_VERSION"
 test -x "$DSH_CLI_DIR/node_modules/.bin/dsh"
 
