@@ -12,7 +12,13 @@ trap 'rm -rf "$TMP_ROOT"' EXIT
 
 DSH_VERSION="$(node -e "const c=require('./compatibility.json'); if(typeof c.tested?.dshPackages!=='string'||!c.tested.dshPackages) process.exit(1); process.stdout.write(c.tested.dshPackages)")"
 
+stage() {
+  printf '\n==> qa:pack-install: %s\n' "$1"
+}
+
+stage "build workspace"
 pnpm build
+stage "pack publishable packages"
 node scripts/pack-publishable.mjs "$PACK_DIR"
 PACK_MANIFEST="$PACK_DIR/pack-manifest.json"
 
@@ -46,24 +52,31 @@ DSH_TGZ="$(package_tarball '@dshelm/dsh')"
 CLI_TGZ="$(package_tarball 'dshelm')"
 
 mkdir -p "$FRESH_DIR" "$DSH_CLI_DIR"
-npm install --prefix "$DSH_CLI_DIR" --no-audit --no-fund "@deepseek-ai/dsh@$DSH_VERSION" >/dev/null
+stage "install external DSH compatibility target ($DSH_VERSION)"
+npm install --prefix "$DSH_CLI_DIR" --no-audit --no-fund --loglevel=warn "@deepseek-ai/dsh@$DSH_VERSION"
 
 cd "$FRESH_DIR"
+stage "initialize fresh consumer project"
 npm init -y >/dev/null
-npm install --no-audit --no-fund "${ALL_TARBALLS[@]}" >/dev/null
+stage "install packed DSHelm workspace packages"
+npm install --no-audit --no-fund --loglevel=warn "${ALL_TARBALLS[@]}"
 
+stage "verify packed package exports"
 node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
+node -e "import('@dshelm/model-knowledge').then(m => { if (!m.knowledgeBundleFromAhiSummaries) process.exit(1) })"
 node -e "import('@dshelm/dsh').then(m => { if (!m.DSHelmPolicyService) process.exit(1) })"
 node -e "if (!require.resolve('dshelm').endsWith('/dist/index.js')) process.exit(1)"
 
 CLI_BIN="$FRESH_DIR/node_modules/dshelm/dist/index.js"
 test -f "$CLI_TGZ"
+stage "run clean-install journey"
 bash "$ROOT/scripts/qa-clean-install.sh" \
   "$CLI_BIN" \
   "$CORE_TGZ" \
   "$MODEL_KNOWLEDGE_TGZ" \
   "$DSH_TGZ" \
   "$DSH_CLI_DIR/node_modules/.bin/dsh"
+stage "verify client bundle"
 node "$ROOT/scripts/verify-client-bundle.js"
 
 echo "qa:pack-install OK (DSH $DSH_VERSION)"
