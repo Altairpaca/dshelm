@@ -53,12 +53,19 @@ CLI_TGZ="$(package_tarball 'dshelm')"
 
 mkdir -p "$FRESH_DIR" "$DSH_CLI_DIR"
 stage "install external DSH compatibility target ($DSH_VERSION)"
-npm install --prefix "$DSH_CLI_DIR" --no-audit --no-fund --loglevel=warn "@deepseek-ai/dsh@$DSH_VERSION"
+# Keep the DSH CLI in an isolated prefix, but use pnpm so Actions can reuse the
+# already-restored pnpm content-addressed store instead of cold-resolving the
+# large rc.7 package graph through a separate npm cache on every PR.
+printf '{"private":true}\n' > "$DSH_CLI_DIR/package.json"
+pnpm --dir "$DSH_CLI_DIR" add --save-exact --prefer-offline "@deepseek-ai/dsh@$DSH_VERSION"
+test -x "$DSH_CLI_DIR/node_modules/.bin/dsh"
 
 cd "$FRESH_DIR"
 stage "initialize fresh consumer project"
 npm init -y >/dev/null
 stage "install packed DSHelm workspace packages"
+NPM_CONFIG_FETCH_TIMEOUT=45000 \
+NPM_CONFIG_FETCH_RETRIES=1 \
 npm install --no-audit --no-fund --loglevel=warn "${ALL_TARBALLS[@]}"
 
 stage "verify packed package exports"
