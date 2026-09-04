@@ -62,11 +62,15 @@ CLI_TGZ="$(package_tarball 'dshelm')"
 mkdir -p "$FRESH_DIR"
 cd "$FRESH_DIR"
 stage "initialize fresh consumer project"
-npm init -y >/dev/null
-stage "install packed DSHelm workspace packages"
-NPM_CONFIG_FETCH_TIMEOUT=45000 \
-NPM_CONFIG_FETCH_RETRIES=1 \
-npm install --no-audit --no-fund --loglevel=warn "${ALL_TARBALLS[@]}"
+printf '{"private":true}\n' > package.json
+stage "resolve and install packed DSHelm workspace packages"
+# This lane verifies the publishable tarballs, their real external runtime
+# dependency graph, and package exports in an isolated consumer. Reuse the
+# Actions-restored pnpm content-addressed store so the check is deterministic
+# and does not cold-resolve the same DSH graph through an unrelated npm cache.
+# Third-party lifecycle/native install scripts are intentionally excluded here;
+# the published DSH compatibility lane below owns that separate failure domain.
+pnpm add --save-exact --prefer-offline --ignore-scripts "${ALL_TARBALLS[@]}"
 
 stage "verify packed package exports"
 node -e "import('@dshelm/core').then(m => { if (!m.resolvePolicy) process.exit(1) })"
