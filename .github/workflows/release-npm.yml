@@ -1,6 +1,15 @@
 name: npm-release
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/release-npm.yml'
+      - 'scripts/release-npm.mjs'
+      - 'scripts/qa-registry-install.sh'
+      - 'scripts/pack-publishable.mjs'
+      - 'release-packages.json'
+      - 'package.json'
+      - 'packages/**/package.json'
   workflow_dispatch:
     inputs:
       mode:
@@ -17,7 +26,7 @@ on:
         type: string
 
 concurrency:
-  group: dshelm-npm-release
+  group: dshelm-npm-release-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -29,8 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
-      RELEASE_MODE: ${{ inputs.mode }}
-      CONFIRM_VERSION: ${{ inputs.confirm_version }}
+      RELEASE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'dry-run' }}
+      CONFIRM_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_version || '' }}
     steps:
       - uses: actions/checkout@v6
 
@@ -54,8 +63,13 @@ jobs:
           ACTUAL_VERSION="$(node -p "require('./package.json').version")"
           echo "release-mode=$RELEASE_MODE"
           echo "workspace-version=$ACTUAL_VERSION"
+          echo "event=$GITHUB_EVENT_NAME"
           echo "git-ref=$GITHUB_REF"
           if [[ "$RELEASE_MODE" == "publish" ]]; then
+            if [[ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]]; then
+              echo "publish mode is available only through an explicit workflow_dispatch" >&2
+              exit 1
+            fi
             if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
               echo "publish mode is allowed only from main" >&2
               exit 1
@@ -101,7 +115,7 @@ jobs:
             --report npm-release-report.json
 
       - name: Registry clean-HOME smoke
-        if: inputs.mode == 'publish'
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish'
         shell: bash
         run: |
           set -euo pipefail
@@ -113,7 +127,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: npm-release-${{ inputs.mode }}
+          name: npm-release-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'dry-run' }}
           path: |
             npm-release-report.json
             registry-smoke.log
