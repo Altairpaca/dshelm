@@ -12,10 +12,11 @@ Before contributing, read [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), [`SUPPORT.
 | Installation / platform evidence | [Install report](https://github.com/Altairpaca/dshelm/issues/new?template=install_report.yml) |
 | Real routing scenario | [Routing scenario](https://github.com/Altairpaca/dshelm/issues/new?template=routing_scenario.yml) |
 | Feature proposal | [Feature request](https://github.com/Altairpaca/dshelm/issues/new?template=feature_request.yml) |
+| Provider integration / ecosystem proposal | Read the [provider integration policy](docs/provider-integrations.md), then open a focused Issue |
 | Question or early design idea | [DSHelm Discussions](https://github.com/Altairpaca/dshelm/discussions) |
 | DSH public-interface/runtime question | [DeepSeek Harness Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) |
 
-Current public work is tracked in Issues, especially [#7](https://github.com/Altairpaca/dshelm/issues/7), [#8](https://github.com/Altairpaca/dshelm/issues/8), [#9](https://github.com/Altairpaca/dshelm/issues/9), and [#10](https://github.com/Altairpaca/dshelm/issues/10).
+Current public work is tracked in Issues, especially [#7](https://github.com/Altairpaca/dshelm/issues/7), [#8](https://github.com/Altairpaca/dshelm/issues/8), [#9](https://github.com/Altairpaca/dshelm/issues/9), [#10](https://github.com/Altairpaca/dshelm/issues/10), and the provider-integration contract in [#22](https://github.com/Altairpaca/dshelm/issues/22).
 
 ## Align scope before coding
 
@@ -27,6 +28,8 @@ Open or join an Issue before implementing any change that introduces or material
 - provider/authentication behavior;
 - compatibility or migration behavior;
 - substantial UI or workflow behavior.
+
+Provider proposals must also preserve the provider-neutral defaults, evidence boundary, credential ownership, and tracking/privacy requirements in [`docs/provider-integrations.md`](docs/provider-integrations.md). Commercial, referral, or cross-promotion terms do not count as technical compatibility evidence.
 
 Documentation fixes, tests, typo fixes, narrowly scoped refactors, and obvious small bug fixes may be submitted directly as a PR. When uncertain, discuss first: early scope alignment is cheaper than reviewing a large PR that does not fit the project boundary.
 
