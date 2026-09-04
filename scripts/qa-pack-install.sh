@@ -63,6 +63,22 @@ mkdir -p "$FRESH_DIR"
 cd "$FRESH_DIR"
 stage "initialize fresh consumer project"
 printf '{"private":true}\n' > package.json
+# The tarballs contain publish-ready semver references to sibling @dshelm
+# packages. Before those packages exist on npm, model one atomic release set by
+# overriding every packed package name to the exact tarball produced above.
+# External dependencies are deliberately not overridden.
+node - "$PACK_MANIFEST" "$FRESH_DIR/pnpm-workspace.yaml" <<'NODE'
+const fs = require('node:fs')
+const [manifestPath, outputPath] = process.argv.slice(2)
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+const quote = (value) => JSON.stringify(value)
+const lines = ["packages:", "  - '.'", 'overrides:']
+for (const entry of manifest.packages) {
+  lines.push(`  ${quote(entry.name)}: ${quote(`file:${entry.tarball}`)}`)
+}
+fs.writeFileSync(outputPath, `${lines.join('\n')}\n`)
+NODE
+
 stage "resolve and install packed DSHelm workspace packages"
 # This lane verifies the publishable tarballs, their real external runtime
 # dependency graph, and package exports in an isolated consumer. Reuse the
