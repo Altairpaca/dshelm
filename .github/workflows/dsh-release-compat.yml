@@ -1,0 +1,37 @@
+name: dsh-release-compat
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - compatibility.json
+      - packages/dsh/**
+      - packages/cli/**
+      - scripts/qa-clean-install.sh
+      - scripts/qa-pack-install.sh
+      - .github/workflows/dsh-release-compat.yml
+
+concurrency:
+  group: dsh-release-compat-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  published-dsh-compat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Published DSH release compatibility contract
+        run: pnpm qa:dsh-release-compat

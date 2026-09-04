@@ -47,12 +47,13 @@ jobs:
       - name: DSH execution and host contracts
         run: pnpm vitest run packages/dsh/tests/dsh-request-contract.test.ts packages/dsh/tests/host-composition.test.ts packages/dsh/tests/vertical-slice.test.ts packages/dsh/tests/keyless-vertical-slice.test.ts
       - name: Auth, knowledge, CLI, and overlay contracts
-        run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
+        run: pnpm vitest run packages/auth/tests/auth.test.ts packages/model-knowledge/tests/knowledge.test.ts packages/model-knowledge/tests/ahi.test.ts packages/cli/tests/user-commands.test.ts packages/dsh/tests/knowledge-overlay.test.ts
       - name: CLI package typecheck
         run: pnpm --filter dshelm typecheck
 
   pack-install:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -63,7 +64,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm qa:pack-install
+      - name: Fresh packed-package install contract
+        run: pnpm qa:pack-install
 
   # Optional upstream source lane: explicit DSH_REFERENCE_DIR, never a
   # default hermetic dependency.
