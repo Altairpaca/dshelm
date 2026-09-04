@@ -18,6 +18,7 @@
     "example:first-run": "tsx examples/first-run-routing.ts",
     "example:dsh-execution": "tsx examples/dsh-execution.ts",
     "qa:pack-install": "bash scripts/qa-pack-install.sh",
+    "qa:dsh-release-compat": "bash scripts/qa-pack-install.sh --with-dsh-release",
     "qa:web-renderer": "tsx scripts/qa-web-renderer.ts",
     "qa:deepseek-live": "tsx scripts/qa-deepseek-live.ts",
     "bench": "tsx scripts/bench-resolver.ts",
