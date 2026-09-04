@@ -4,7 +4,7 @@ import type { CapabilityKind, KnowledgeBundle, ModelKnowledgeRecord } from './co
 
 const sha256 = z.string().regex(/^[0-9a-f]{64}$/)
 const nullableNonEmpty = z.string().min(1).nullable()
-const offsetAwareIso8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/
+const offsetAwareTimestamp = z.string().datetime({ offset: true })
 
 const metricMean = z.object({
   observed: z.number().int().nonnegative(),
@@ -104,7 +104,7 @@ function nonEmpty(value: string, field: string): string {
 }
 
 function requireOffsetAwareTimestamp(value: string, field: string): void {
-  if (!offsetAwareIso8601.test(value) || !Number.isFinite(Date.parse(value))) {
+  if (!offsetAwareTimestamp.safeParse(value).success) {
     throw new Error(`${field} must be an offset-aware ISO 8601 timestamp`)
   }
 }
