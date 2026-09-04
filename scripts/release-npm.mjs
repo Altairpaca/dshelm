@@ -30,6 +30,14 @@ function run(command, commandArgs, options = {}) {
   return result
 }
 
+function parseJsonOutput(result, label) {
+  try {
+    return JSON.parse(result.stdout)
+  } catch (error) {
+    throw new Error(`could not parse ${label}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
 }
@@ -40,24 +48,24 @@ const canonicalRepositoryUrls = new Set([
 ])
 
 function registryMetadata(name, version) {
-  const result = run('npm', ['view', `${name}@${version}`, 'version', 'repository.url', '--json'], { capture: true })
-  if (result.status !== 0) return undefined
-  try {
-    const parsed = JSON.parse(result.stdout)
-    if (typeof parsed === 'string') return { version: parsed }
-    return parsed
-  } catch (error) {
-    throw new Error(`could not parse npm view output for ${name}@${version}: ${error instanceof Error ? error.message : String(error)}`)
+  const spec = `${name}@${version}`
+  const versionResult = run('npm', ['view', spec, 'version', '--json'], { capture: true })
+  if (versionResult.status !== 0) return undefined
+  const registryVersion = parseJsonOutput(versionResult, `npm view version output for ${spec}`)
+  const repositoryResult = run('npm', ['view', spec, 'repository.url', '--json'], { capture: true })
+  if (repositoryResult.status !== 0) {
+    throw new Error(`${spec} exists but repository.url could not be read; refusing to resume across an unverifiable package`)
   }
+  const repositoryUrl = parseJsonOutput(repositoryResult, `npm view repository.url output for ${spec}`)
+  return { version: registryVersion, repositoryUrl }
 }
 
 function assertExistingPackageIsOurs(entry, metadata) {
   if (metadata?.version !== entry.version) {
     throw new Error(`registry returned unexpected version for ${entry.name}: ${metadata?.version ?? '<missing>'}`)
   }
-  const repositoryUrl = metadata?.repository?.url ?? metadata?.repository
-  if (repositoryUrl !== undefined && !canonicalRepositoryUrls.has(repositoryUrl)) {
-    throw new Error(`${entry.name}@${entry.version} already exists with unexpected repository ${repositoryUrl}`)
+  if (typeof metadata.repositoryUrl !== 'string' || !canonicalRepositoryUrls.has(metadata.repositoryUrl)) {
+    throw new Error(`${entry.name}@${entry.version} already exists with unexpected repository ${metadata.repositoryUrl ?? '<missing>'}`)
   }
 }
 
@@ -86,6 +94,7 @@ if (args.mode === 'publish' && args.confirmVersion !== root.version) {
   throw new Error(`publish requires --confirm-version ${root.version}`)
 }
 
+const reportPath = resolve(args.report)
 const report = {
   schemaVersion: 1,
   mode: args.mode,
@@ -94,6 +103,10 @@ const report = {
   startedAt: new Date().toISOString(),
   packages: [],
 }
+function persistReport() {
+  writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`)
+}
+persistReport()
 
 for (const entry of manifest.packages) {
   if (entry.version !== root.version) throw new Error(`${entry.name} tarball version ${entry.version} does not match ${root.version}`)
@@ -104,6 +117,7 @@ for (const entry of manifest.packages) {
     if (existing !== undefined) {
       assertExistingPackageIsOurs(entry, existing)
       report.packages.push({ name: entry.name, version: entry.version, action: 'already-published' })
+      persistReport()
       console.log(`==> ${entry.name}@${entry.version}: already published by this repository`)
       continue
     }
@@ -111,6 +125,7 @@ for (const entry of manifest.packages) {
     const dryRun = run('npm', ['publish', tarball, '--dry-run', '--access', 'public', '--tag', args.tag])
     if (dryRun.status !== 0) throw new Error(`npm publish --dry-run failed for ${entry.name}`)
     report.packages.push({ name: entry.name, version: entry.version, action: 'dry-run-ok' })
+    persistReport()
     continue
   }
 
@@ -118,16 +133,21 @@ for (const entry of manifest.packages) {
     assertExistingPackageIsOurs(entry, existing)
     console.log(`==> ${entry.name}@${entry.version}: already published; resuming after it`)
     report.packages.push({ name: entry.name, version: entry.version, action: 'already-published' })
+    persistReport()
     continue
   }
 
   console.log(`==> ${entry.name}@${entry.version}: publishing with dist-tag ${args.tag}`)
   const published = run('npm', ['publish', tarball, '--access', 'public', '--tag', args.tag])
   if (published.status !== 0) throw new Error(`npm publish failed for ${entry.name}`)
+  const pending = { name: entry.name, version: entry.version, action: 'publish-command-ok-awaiting-registry' }
+  report.packages.push(pending)
+  persistReport()
   waitForRegistry(entry)
-  report.packages.push({ name: entry.name, version: entry.version, action: 'published' })
+  pending.action = 'published'
+  persistReport()
 }
 
 report.completedAt = new Date().toISOString()
-writeFileSync(resolve(args.report), `${JSON.stringify(report, null, 2)}\n`)
+persistReport()
 console.log(`npm release ${args.mode} completed for ${manifest.packages.length} packages @ ${root.version}`)
