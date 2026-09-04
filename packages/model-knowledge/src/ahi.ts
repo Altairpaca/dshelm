@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { KnowledgeBundleSchema } from './contracts.ts'
 import type { CapabilityKind, KnowledgeBundle, ModelKnowledgeRecord } from './contracts.ts'
@@ -116,20 +115,16 @@ function validateMapping(mapping: AhiEvidenceMapping): void {
 }
 
 function evidenceId(summary: AhiSummary, mapping: AhiEvidenceMapping): string {
-  const payload = JSON.stringify({
-    benchmark: summary.benchmark,
-    benchmarkVersion: summary.benchmark_version,
-    capability: mapping.capability,
-    configurationSha256: summary.configuration_sha256,
-    environmentSha256: summary.environment_sha256,
-    harness: summary.harness,
-    harnessVersion: summary.harness_version,
-    model: summary.model,
-    modelVersion: summary.model_version,
-    provider: mapping.provider,
-    taskSetSha256: summary.task_set_sha256,
-  })
-  return `ahi-${createHash('sha256').update(payload).digest('hex').slice(0, 24)}`
+  return [
+    'ahi',
+    mapping.provider,
+    summary.model,
+    summary.harness,
+    mapping.capability,
+    summary.task_set_sha256.slice(0, 12),
+    summary.configuration_sha256.slice(0, 12),
+    summary.environment_sha256.slice(0, 12),
+  ].join(':')
 }
 
 function evidenceValue(summary: AhiSummary): Record<string, string | number | boolean> {
