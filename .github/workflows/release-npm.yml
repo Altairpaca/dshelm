@@ -1,0 +1,122 @@
+name: npm-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Release mode. Keep dry-run unless intentionally publishing from main.
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - publish
+      confirm_version:
+        description: For publish mode, type the exact workspace version (for example 0.3.0-alpha.0).
+        required: false
+        type: string
+
+concurrency:
+  group: dshelm-npm-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      RELEASE_MODE: ${{ inputs.mode }}
+      CONFIRM_VERSION: ${{ inputs.confirm_version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      - name: Pin release npm CLI
+        run: npm install --global npm@11.19.1
+
+      - name: Guard publish ref and version
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_VERSION="$(node -p "require('./package.json').version")"
+          echo "release-mode=$RELEASE_MODE"
+          echo "workspace-version=$ACTUAL_VERSION"
+          echo "git-ref=$GITHUB_REF"
+          if [[ "$RELEASE_MODE" == "publish" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "publish mode is allowed only from main" >&2
+              exit 1
+            fi
+            if [[ "$CONFIRM_VERSION" != "$ACTUAL_VERSION" ]]; then
+              echo "publish mode requires confirm_version=$ACTUAL_VERSION" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+
+      - name: Release metadata contract
+        run: pnpm package:check
+
+      - name: Typecheck and test
+        run: |
+          pnpm typecheck
+          pnpm test
+
+      - name: Deterministic packed-package closure
+        run: pnpm qa:pack-install
+
+      - name: Pack atomic release set
+        run: |
+          rm -rf .release-pack
+          pnpm release:pack -- .release-pack
+
+      - name: Publish dry-run or alpha release
+        env:
+          # Bootstrap: use a short-lived/granular NPM_TOKEN if these package names
+          # do not exist yet. After first publication, configure npm Trusted
+          # Publishing for this exact workflow and revoke the bootstrap token;
+          # npm then authenticates through the OIDC permission above.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node scripts/release-npm.mjs \
+            --manifest .release-pack/pack-manifest.json \
+            --mode "$RELEASE_MODE" \
+            --tag alpha \
+            --confirm-version "$CONFIRM_VERSION" \
+            --report npm-release-report.json
+
+      - name: Registry clean-HOME smoke
+        if: inputs.mode == 'publish'
+        shell: bash
+        run: |
+          set -euo pipefail
+          DSHELM_VERSION="$(node -p "require('./package.json').version")"
+          DSH_VERSION="$(node -e "const c=require('./compatibility.json'); process.stdout.write(c.tested.dshPackages)")"
+          bash scripts/qa-registry-install.sh "$DSHELM_VERSION" "$DSH_VERSION" 2>&1 | tee registry-smoke.log
+
+      - name: Upload release evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-release-${{ inputs.mode }}
+          path: |
+            npm-release-report.json
+            registry-smoke.log
+            .release-pack/pack-manifest.json
+          if-no-files-found: warn
+          retention-days: 30
