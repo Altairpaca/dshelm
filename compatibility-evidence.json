@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "dshelm.compat-evidence/v1",
+  "runtime": "@deepseek-ai/dsh",
+  "version": "0.1.2-rc.1",
+  "checks": {
+    "package-graph-complete": { "status": "pending" },
+    "workspace-typecheck": { "status": "pending" },
+    "packed-release-install": { "status": "pending" },
+    "isolated-profile-journey": { "status": "pending" },
+    "web-client-boot": { "status": "blocked", "blockerIds": ["deepseek-harness-discussion-5544", "deepseek-harness-discussion-5628"] },
+    "dshelm-client-bundle-materialized": { "status": "blocked", "blockerIds": ["deepseek-harness-discussion-5544", "deepseek-harness-discussion-5628"] }
+  }
+}
