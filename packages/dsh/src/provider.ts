@@ -18,6 +18,20 @@ import type { DSHelmPolicyServiceFace } from './service.ts'
 export const DSHELM_PROVIDER_NAME = 'dshelm'
 const ROLE_LABEL_PREFIX = 'dshelm:'
 
+/**
+ * DSH 0.1.2 adds the `agentOptions` start capability. The structural cast keeps
+ * this package compilable against the currently pinned 0.1.0-rc.7 types while
+ * exposing the new runtime flag to 0.1.2 hosts; legacy hosts ignore the extra
+ * property.
+ */
+const DSHELM_SUBAGENT_CAPABILITIES = {
+  agentOptions: true,
+  outputSchema: false,
+  depthLimit: true,
+  toolFilter: true,
+  persona: true,
+} as unknown as SubagentProvider['capabilities']
+
 export interface DSHelmProviderOptions {
   readonly service: DSHelmPolicyServiceFace
   /** Resolve the category for a role label (e.g. planner/worker/reviewer). */
@@ -30,8 +44,8 @@ export interface DSHelmProviderOptions {
  * Build the child's first-request config seed. The session seed contract
  * accepts `request/header` events (validated at the seed boundary), and the
  * loop restores the explicit reasoningEffort from the persisted header when
- * the route matches — the official mechanism for carrying DSHelm's
- * reasoning effort into a subagent child's real request config.
+ * the route matches. This remains the legacy path for 0.1.0-rc.x hosts while
+ * 0.1.2 can also consume reasoningEffort from AgentOptions directly.
  */
 export function childRequestHeaderSeed(resolved: ResolvedAgentPolicy): SessionEvent[] {
   const config: { provider: string; model: string; reasoningEffort?: string } = {
@@ -49,10 +63,23 @@ export function childRequestHeaderSeed(resolved: ResolvedAgentPolicy): SessionEv
   ]
 }
 
+/**
+ * Build AgentOptions understood by both DSH generations. `reasoningEffort` was
+ * added to AgentOptions in 0.1.2; the assertion deliberately preserves the
+ * runtime field when compiling against the legacy type surface.
+ */
+function resolvedAgentOptions(resolved: ResolvedAgentPolicy): NonNullable<ResolvedSubagentStartRequest['agentOptions']> {
+  return {
+    provider: resolved.provider,
+    model: resolved.model,
+    ...(resolved.reasoning !== undefined ? { reasoningEffort: resolved.reasoning } : {}),
+  } as NonNullable<ResolvedSubagentStartRequest['agentOptions']>
+}
+
 export function createDSHelmProvider(options: DSHelmProviderOptions): SubagentProvider {
   return {
     name: DSHELM_PROVIDER_NAME,
-    capabilities: { outputSchema: false, depthLimit: true, toolFilter: true, persona: true },
+    capabilities: DSHELM_SUBAGENT_CAPABILITIES,
     inheritsParentContext: false,
     start: async (request: ResolvedSubagentStartRequest): Promise<SubagentRun> => {
       const role = roleFromLabel(request.label)
@@ -63,7 +90,7 @@ export function createDSHelmProvider(options: DSHelmProviderOptions): SubagentPr
       options.service.recordDelegation(resolved, options.sessionIdOf(request))
       const mapped: ResolvedSubagentStartRequest = {
         ...request,
-        agentOptions: { provider: resolved.provider, model: resolved.model },
+        agentOptions: resolvedAgentOptions(resolved),
         ...(resolved.persona !== undefined ? { persona: resolved.persona } : {}),
         ...(resolved.tools !== undefined ? { toolFilter: toToolRestriction(resolved.tools) } : {}),
         ...(resolved.maxDepth !== undefined ? { maxDepth: resolved.maxDepth } : {}),

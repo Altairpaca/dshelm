@@ -4,23 +4,140 @@
  *
  * Precedence (tested): defaults → user → project → request → runtime
  * validation. The user layer comes from `ctx.settings` when a settings
- * provider is composed (official settings-namespace seam); the project layer
- * is the committed file; request layers come from the resolve call.
+ * provider is composed; the project layer is the committed file; request
+ * layers come from the resolve call.
+ *
+ * DSH compatibility:
+ * - 0.1.0-rc.x exports top-level `settingsNamespace()` and
+ *   `installSettingsSection(ctx, ...)` helpers.
+ * - 0.1.2 moves optional-section installation onto
+ *   `ctx.settings.installSection(owner, ...)` and accepts literal namespaces.
+ *
+ * Importing the settings package as a namespace avoids a static named-export
+ * dependency on helpers removed by 0.1.2. `installSettingsSectionCompat()`
+ * selects the legacy helper when present and otherwise wires the modern
+ * optional service through `ctx.inject(['settings'], ...)`.
  */
 import { readFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import { loadPolicyLayers, type PolicyDocument, type PolicyLayerValue } from '@dshelm/core'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
+import * as DshSettings from '@deepseek-ai/dsh-settings'
 
 export const DSHELM_CONFIG_DIR = '.dshelm'
 export const DSHELM_CONFIG_FILE = 'config.jsonc'
-export const DSHELM_SETTINGS_NAMESPACE = settingsNamespace('dshelm')
 
 /** Schema-backed user-level override document (optional fields). */
 export interface DSHelmUserSettings {
   readonly profiles?: Record<string, unknown>
   readonly agents?: Record<string, unknown>
   readonly categories?: Record<string, unknown>
+}
+
+type SettingsSourceHooks<T> = {
+  setSource(current: () => T): void
+  onChange(): void
+  validate?: (value: T) => void
+}
+
+type SettingsSchema<T> = ((value: unknown) => T) & { toJSON(): unknown }
+
+type LegacySettingsModule = {
+  settingsNamespace?: (value: string) => unknown
+  installSettingsSection?: <T>(
+    owner: unknown,
+    namespace: unknown,
+    schema: SettingsSchema<T>,
+    entry: T,
+    hooks: SettingsSourceHooks<T>,
+  ) => void
+}
+
+type ModernSettingsService = {
+  installSection<T>(
+    owner: unknown,
+    namespace: string,
+    schema: SettingsSchema<T>,
+    entry: T,
+    hooks: SettingsSourceHooks<T>,
+  ): void
+}
+
+type SettingsInjectContext = {
+  inject(
+    services: readonly string[],
+    callback: (ctx: { settings?: ModernSettingsService }) => void,
+  ): void
+}
+
+const settingsModule = DshSettings as unknown as LegacySettingsModule
+export const DSHELM_SETTINGS_NAMESPACE = settingsModule.settingsNamespace?.('dshelm') ?? 'dshelm'
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const proto = Object.getPrototypeOf(value)
+  return proto === Object.prototype || proto === null
+}
+
+function validateSettingsSection(value: unknown, field: keyof DSHelmUserSettings): void {
+  if (value === undefined) return
+  if (!isPlainObject(value)) {
+    throw new TypeError(`dshelm settings.${field} must be an object when present`)
+  }
+}
+
+/**
+ * Minimal callable schema accepted by both DSH settings generations.
+ * Deep policy validation deliberately remains owned by @dshelm/core.
+ */
+export const DSHELM_SETTINGS_SCHEMA: SettingsSchema<DSHelmUserSettings> = Object.assign(
+  (value: unknown): DSHelmUserSettings => {
+    if (!isPlainObject(value)) throw new TypeError('dshelm settings must be an object')
+    validateSettingsSection(value.profiles, 'profiles')
+    validateSettingsSection(value.agents, 'agents')
+    validateSettingsSection(value.categories, 'categories')
+    return value as DSHelmUserSettings
+  },
+  {
+    toJSON: () => ({
+      type: 'object',
+      properties: {
+        profiles: { type: 'object' },
+        agents: { type: 'object' },
+        categories: { type: 'object' },
+      },
+      additionalProperties: false,
+    }),
+  },
+)
+
+/**
+ * Install one optional settings section across the two DSH settings APIs.
+ * Exported for a small compatibility contract test; application code should
+ * normally call installDSHelmSettings().
+ */
+export function installSettingsSectionCompat<T>(
+  owner: Context,
+  namespace: string,
+  schema: SettingsSchema<T>,
+  entry: T,
+  hooks: SettingsSourceHooks<T>,
+  moduleFace: LegacySettingsModule = settingsModule,
+): void {
+  if (typeof moduleFace.installSettingsSection === 'function') {
+    moduleFace.installSettingsSection(owner, namespace, schema, entry, hooks)
+    return
+  }
+
+  const injectOwner = owner as unknown as SettingsInjectContext
+  if (typeof injectOwner.inject !== 'function') {
+    throw new Error('unsupported DSH settings API: expected legacy installSettingsSection() or Context.inject()')
+  }
+  injectOwner.inject(['settings'], (ctx) => {
+    if (ctx.settings === undefined || typeof ctx.settings.installSection !== 'function') {
+      throw new Error('unsupported DSH settings API: settings service has no installSection()')
+    }
+    ctx.settings.installSection(owner, namespace, schema, entry, hooks)
+  })
 }
 
 /**
@@ -39,25 +156,19 @@ export async function loadProjectPolicyLayer(cwd: string): Promise<PolicyLayerVa
 }
 
 /**
- * Install the `dshelm` user-settings namespace (official
- * `@deepseek-ai/dsh-settings` seam). Returns the live reader; the section
- * is fiber-owned and unwinds on disposal.
- *
- * `installSettingsSection(ctx, ns, schema, entry, hooks)` signature verified
- * against `@deepseek-ai/dsh-settings` rc.6: `hooks.setSource` receives a
- * THUNK returning the currently authoritative value, not the value itself.
+ * Install the `dshelm` user-settings namespace and return its live reader.
+ * The compatibility bridge preserves the old optional-service behavior: with
+ * no settings provider the composition `base` remains authoritative.
  */
 export function installDSHelmSettings(
   ctx: Context,
   base: DSHelmUserSettings,
 ): () => DSHelmUserSettings | undefined {
   let source: DSHelmUserSettings = base
-  installSettingsSection(
+  installSettingsSectionCompat(
     ctx,
-    DSHELM_SETTINGS_NAMESPACE,
-    // Minimal schema: free-form policy sections layered on the base document.
-    // Full schema validation happens in @dshelm/core at load time.
-    { profiles: { type: 'object' }, agents: { type: 'object' }, categories: { type: 'object' } } as never,
+    String(DSHELM_SETTINGS_NAMESPACE),
+    DSHELM_SETTINGS_SCHEMA,
     base,
     {
       setSource: (current) => { source = current() },

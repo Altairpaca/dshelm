@@ -1,52 +1,77 @@
 /**
- * DSHelm control-plane panel — REAL DSH client plugin (browser half).
+ * DSHelm control-plane panel — DSH client plugin (browser half).
  *
  * Consumes the canonical host projection (dshelm.controlPlane) through the
- * official client runtime: the current session's projection store
- * (sessions.binding(id).session.projections.faceOf(key) — the useProjection
- * resolution path). No second UI-only explanation model exists: the value IS
- * the canonical ResolutionTrace-derived snapshot.
+ * current session projection face (`sessions.binding(id).session.projections`).
+ * No second UI-only explanation model exists: the value IS the canonical
+ * ResolutionTrace-derived snapshot.
  *
- * v0.2 surface: a body-mounted panel (the AgentTeams-validated pattern for
- * surfaces without a native slot seat). Conversation-slot integration is a
- * documented next increment.
+ * Compatibility note: DSH 0.1.2 replaces the old `dsh-client-runtime` package
+ * with the client module system and package-owned API/UI client extensions.
+ * This plugin therefore types only the small structural session face it uses;
+ * the package-manifest dependency/inject migration is promoted together with
+ * the 0.1.2 npm graph and lockfile, never as a source-only version bump.
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ControlPlaneProjectionValue } from '../session-events.ts'
 
-/** Required services: the sessions domain (list + bindings). */
+/** Required service: the client session domain. */
 export const inject = ['sessions'] as const
+
+type ClientSessionId = string
 
 type ProjectionFace = {
   getSnapshot(): unknown
   subscribe(fn: () => void): () => void
 }
 
-function useControlPlane(sessions: ClientContext['sessions']): ControlPlaneProjectionValue | undefined {
-  const [value, setValue] = useState<ControlPlaneProjectionValue | undefined>(undefined)
-  useEffect(() => {
-    let face: ProjectionFace | undefined
-    let unsubscribeList: (() => void) | undefined
-    const rebind = (): void => {
-      const current: SessionId | undefined = sessions.list.getSnapshot().current
-      const binding = current === undefined ? undefined : sessions.binding(current)
-      const next = binding?.session.projections.faceOf('dshelm.controlPlane')
-      if (next !== undefined) {
-        face = next
-        const sync = (): void => setValue(next.getSnapshot() as ControlPlaneProjectionValue | undefined)
-        sync()
-        next.subscribe(sync)
-      } else {
-        face = undefined
-        setValue(undefined)
+type ClientSessionsFace = {
+  readonly list: {
+    getSnapshot(): { readonly current?: ClientSessionId }
+    subscribe(fn: () => void): () => void
+  }
+  binding(id: ClientSessionId): {
+    readonly session: {
+      readonly projections: {
+        faceOf(key: string): ProjectionFace | undefined
       }
     }
+  } | undefined
+}
+
+export interface DSHelmWebClientContext {
+  readonly sessions: ClientSessionsFace
+  effect(cleanup: () => (() => void) | void, label?: string): void
+}
+
+function useControlPlane(sessions: ClientSessionsFace): ControlPlaneProjectionValue | undefined {
+  const [value, setValue] = useState<ControlPlaneProjectionValue | undefined>(undefined)
+  useEffect(() => {
+    let unsubscribeProjection: (() => void) | undefined
+
+    const rebind = (): void => {
+      unsubscribeProjection?.()
+      unsubscribeProjection = undefined
+
+      const current = sessions.list.getSnapshot().current
+      const binding = current === undefined ? undefined : sessions.binding(current)
+      const next = binding?.session.projections.faceOf('dshelm.controlPlane')
+      if (next === undefined) {
+        setValue(undefined)
+        return
+      }
+
+      const sync = (): void => setValue(next.getSnapshot() as ControlPlaneProjectionValue | undefined)
+      sync()
+      unsubscribeProjection = next.subscribe(sync)
+    }
+
     rebind()
-    unsubscribeList = sessions.list.subscribe(rebind)
+    const unsubscribeList = sessions.list.subscribe(rebind)
     return () => {
-      unsubscribeList?.()
+      unsubscribeProjection?.()
+      unsubscribeList()
     }
   }, [sessions])
   return value
@@ -159,7 +184,7 @@ function Inspector({ snapshot, copy }: { snapshot: ControlPlaneProjectionValue; 
   )
 }
 
-function ControlPlanePanel({ sessions }: { sessions: ClientContext['sessions'] }): ReactNode {
+function ControlPlanePanel({ sessions }: { sessions: ClientSessionsFace }): ReactNode {
   const snapshot = useControlPlane(sessions)
   const copy = labels()
   return (
@@ -177,7 +202,7 @@ function ControlPlanePanel({ sessions }: { sessions: ClientContext['sessions'] }
   )
 }
 
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: DSHelmWebClientContext): void {
   const host = document.createElement('aside')
   document.body.appendChild(host)
   const root = createRoot(host)

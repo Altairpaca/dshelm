@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="DSHelm - DeepSeek Harness 的可解释多模型调度层" width="100%">
+  <img src="docs/assets/banner.svg" alt="DSHelm — explainable model routing for DeepSeek Harness" width="100%">
 </p>
 
 <p align="center"><a href="README.en.md">English</a> · 简体中文</p>
@@ -7,66 +7,125 @@
 <p align="center">
   <a href="https://github.com/Altairpaca/dshelm/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Altairpaca/dshelm/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-0f766e"></a>
-  <a href="https://github.com/topics/dsh-plugin"><img alt="DSH plugin" src="https://img.shields.io/badge/DeepSeek_Harness-plugin-0891b2"></a>
-  <img alt="status alpha" src="https://img.shields.io/badge/status-alpha-f97360">
+  <a href="https://github.com/topics/dsh-plugin"><img alt="DeepSeek Harness plugin" src="https://img.shields.io/badge/DeepSeek_Harness-plugin-0891b2"></a>
+  <img alt="status alpha" src="https://img.shields.io/badge/status-0.3.0--alpha-f97360">
+</p>
+
+<p align="center">
+  <a href="#两分钟看懂-dshelm">两分钟看懂</a> ·
+  <a href="#零凭据体验">零凭据体验</a> ·
+  <a href="#deepseek-harness-兼容性">DSH 兼容性</a> ·
+  <a href="#从源码体验">源码安装</a> ·
+  <a href="#社区与路线图">社区路线图</a>
 </p>
 
 > [!IMPORTANT]
-> DSHelm 目前是 `0.3.0-alpha` 源码预览版，npm 包尚未发布。当前适合 DSH 插件开发者和愿意反馈早期体验的用户，不建议用于生产环境。
+> DSHelm 当前是 `0.3.0-alpha` **源码预览版**，npm 包尚未发布，不建议用于生产环境。项目正在适配 DeepSeek Harness `0.1.2-rc.1`；core/session/subagent 与 browser source bridge 已经落地，但 0.1.2 的 client package graph 已从旧 `dsh-client-runtime` 迁移到新的 client module system。完整 npm package set、client manifest/lockfile migration 与 clean-profile/Web 验证完成前，不会把它标记为已验证安装基线。
 
-## DSHelm 解决什么问题
+<p align="center">
+  <img src="docs/assets/compatibility-status.svg" alt="DSHelm compatibility status: source preview, verified DSH install baseline, and current DSH source target" width="100%">
+</p>
 
-当一个任务同时需要强规划、低成本并行执行和独立审核时，固定使用一个模型往往不是最合适的选择。DSHelm 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 增加一层可解释的调度能力：
+## 两分钟看懂 DSHelm
 
-- **按能力选择模型**：先检查运行时、认证、上下文和成本等硬条件，再对候选模型排序。
-- **让每次选择可追溯**：展示角色、模型、推理等级、覆盖来源和候选淘汰原因。
-- **复用 DSH 生态**：使用 DSH 官方扩展接口，不复制会话、工具、工作流或桌面运行时。
-- **尊重用户配置**：项目和请求级设置始终可以覆盖 DSHelm 的建议。
+DSHelm 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 上的一层**可解释多模型调度控制面**。它不复制 DSH 的 session、tool、workflow 或 agent runtime；它只负责在执行之前回答三个问题：
 
-一句话概括：**让规划、执行和审核使用合适的模型，并告诉你为什么。**
+1. **这一步应该交给哪个 role / provider / model？**
+2. **哪些 runtime、认证、上下文或成本条件排除了其他候选？**
+3. **最终选择来自默认策略、用户覆盖，还是当前请求？**
 
-<p align="center"><img src="docs/assets/control-plane.png" alt="DSHelm 控制面板展示 planner、worker 和 reviewer 的模型路由与 Resolution Trace" width="92%"></p>
+<p align="center">
+  <img src="docs/assets/routing-flow.svg" alt="DSHelm routing flow from task requirements through hard gates, evidence, policy overrides, DSH execution and Resolution Trace" width="100%">
+</p>
 
-## 当前可以体验
+核心边界很简单：
 
-| 能力 | 当前状态 | 你能看到什么 |
-| --- | --- | --- |
-| DSH 原生组合 | 已验证 | 独立 `dshelm` profile 和 `@dshelm/dsh` bundle |
-| 模型路由 | Alpha | 硬条件过滤、证据评分、用户策略覆盖 |
-| Resolution Trace | Alpha | 每个有效字段的来源和候选决策 |
-| 账号发现 | Alpha | API key、provider OAuth 和部分产品登录状态，不复制产品凭据 |
-| Web 控制面板 | Alpha | Roles × Models 与最近一次调度解释 |
-| OmO 配置迁移 | 预览 | 只读分析，明确标出映射、损失和不支持项 |
-| npm 一键安装 | 发布门槛 | 尚未开放，当前只能使用下方源码预览流程 |
-| 桌面安装包 | 生态协作 | DSHelm 不另造桌面壳，跟随 DSH 桌面宿主的 profile/plugin 能力 |
-
-## 2026 年 9 月维护进展
-
-当前 `main` 已包含 `0.3.0-alpha` 的认证与模型编排、DSH profile 安装、`doctor` / `explain`、Resolution Trace、Web 控制面板和 OmO 只读迁移能力。下一阶段已经拆成可公开跟踪的社区任务：
-
-| 任务 | 目标 |
+| DSHelm 负责 | DeepSeek Harness 负责 |
 | --- | --- |
-| [#7 npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | 发布可验证的公共 alpha，并完成 clean-HOME 安装 / 卸载证据 |
-| [#8 跨平台安装矩阵](https://github.com/Altairpaca/dshelm/issues/8) | 收集 Linux、macOS Apple Silicon、Windows 11 + WSL2 的可复现安装记录 |
-| [#9 首次运行示例](https://github.com/Altairpaca/dshelm/issues/9) | 提供 planner → workers → reviewer 的 credential-light 示例和完整 trace |
-| [#10 贡献者入口](https://github.com/Altairpaca/dshelm/issues/10) | 明确 provider/model evidence、平台验证、文档、示例和 bug 的贡献规范 |
+| policy、routing、capability evidence | agent lifecycle、session、tool execution |
+| provider/model/reasoning selection | provider adapters 与真实模型调用 |
+| user/project/request overrides | profile/plugin composition |
+| Resolution Trace 与选择解释 | host、Web、Headless、SDK 等执行面 |
 
-当前发布状态仍是**源码预览**。npm 包、三平台完整验证以及可复用首次运行 fixture 均以对应 Issue 的验收条件为准，不提前宣称完成。
+**结果是：planner、worker、reviewer 可以使用不同模型，但每一次选择都保留可追溯证据。**
 
-### 不配置 provider，先检查路由和执行链路
+### 真实控制面
 
-仓库提供两个零凭据 fixture，分别验证两层契约：
+<p align="center">
+  <img src="docs/assets/control-plane.png" alt="DSHelm Web control plane showing Roles × Models and Resolution Trace" width="94%">
+</p>
+
+## 零凭据体验
+
+仓库提供两层 deterministic fixture。两者都不需要 provider credential，但证明的东西不同：
 
 ```bash
 pnpm example:first-run
 pnpm example:dsh-execution
 ```
 
-`example:first-run` 只验证 **resolver 与 Resolution Trace**。`example:dsh-execution` 再向前一层：planner → 两个 bounded workers → reviewer 会通过真实 DSH `Context`、agent factory 与 `AgentLoop` 执行，同时使用 deterministic synthetic provider 生成模型响应。后者可以证明 DSHelm 解析出的 provider/model 确实进入真实 DSH request，但不代表任何外部 provider、网络、认证或模型质量已经验证。两者的证据边界和输出结构见 [`examples/README.md`](examples/README.md)。
+| 命令 | 真实执行到哪一层 | 明确不证明什么 |
+| --- | --- | --- |
+| `example:first-run` | DSHelm Core resolver + Resolution Trace | 不执行 DSH agent，不访问 provider |
+| `example:dsh-execution` | 真实 DSH `Context` + `AgentRegistry` + `AgentLoop`，执行 planner → bounded workers → reviewer，并检查 actual request route | synthetic LLM adapter，不证明外部网络、OAuth 或模型质量 |
+
+第二个 fixture 会把实际进入 DSH adapter 的 `requestRoutes` 与 DSHelm resolution 逐项比较，因此它可以证明：**路由结果确实进入了真实 DSH request path**。详细输出与证据边界见 [`examples/README.md`](examples/README.md)。
+
+<details>
+<summary><strong>为什么保留两个 fixture？</strong></summary>
+
+resolver contract 与 execution contract 是两个不同的故障域。把它们拆开后，routing regression 可以在不启动 agent runtime 的情况下定位；而 execution fixture 专门验证 DSHelm → DSH 的边界，没有必要用真实 API key 才获得可重复证据。
+
+</details>
+
+## 当前能力
+
+| 能力 | 状态 | 当前证据 |
+| --- | --- | --- |
+| DSH 原生 profile / bundle | Alpha | 独立 `dshelm` profile、`@dshelm/dsh` bundle、clean profile journey |
+| 多模型路由 | Alpha | hard gates、evidence scoring、policy overrides |
+| Resolution Trace | Alpha | candidate outcome、field provenance、selected route |
+| 账号与认证发现 | Alpha | API key / provider OAuth / 部分产品登录状态；不复制产品凭据 |
+| Web control plane | Alpha | Roles × Models、最近一次调度解释 |
+| planner → workers → reviewer | Alpha | deterministic real-DSH execution fixture |
+| OmO 配置迁移 | Preview | 只读分析；SUPPORTED / MAPPED / LOSSY / UNSUPPORTED |
+| npm 安装 | Release gate | 尚未公开；[#7](https://github.com/Altairpaca/dshelm/issues/7) 跟踪 |
+| 跨平台验证 | Community evidence | Linux / macOS Apple Silicon / Windows 11 + WSL2 持续收集 |
+
+## DeepSeek Harness 兼容性
+
+### 当前状态
+
+DSHelm 的兼容性声明采用两层口径：
+
+- **Verified install baseline — `0.1.0-rc.7`**：已经完成 package/runtime、clean HOME、profile composition、bounded boot、doctor / explain / uninstall 验证。
+- **Current source target — `0.1.2-rc.1`**：DeepSeek Harness 于 **2026-09-03** 发布的最新 source release。DSHelm 已完成已确认的 core/session/subagent bridge，并把 Web control-plane browser source 从已移除的 legacy runtime 类型依赖中解耦；**0.1.2 client package graph migration 与 Web bundle verification 仍是 promotion blocker**。
+
+当前机器可读状态见 [`compatibility.json`](compatibility.json)，完整 seam-by-seam 审计见 [`docs/compatibility/dsh-0.1.2-rc.1.md`](docs/compatibility/dsh-0.1.2-rc.1.md)。上游 source target 对应 [`dsh-v0.1.2-rc.1`](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-rc.1)。
+
+### 已处理 / 已定位的 0.1.2 变化
+
+| 上游变化 | DSHelm 处理 |
+| --- | --- |
+| `Session.events` 被 `seq` / `eventAt()` / `snapshotEvents()` 取代 | 新增 session-log compatibility bridge：优先 `snapshotEvents()`，legacy host 回退 `events` |
+| `SubagentCapabilities` 新增 `agentOptions` gate | DSHelm provider 在 runtime 声明 `agentOptions: true`，同时保持旧类型可编译 |
+| `AgentOptions` 新增 `reasoningEffort` | 新 host 直接获得 reasoning option；legacy host 继续通过 `request/header` seed 恢复 reasoning |
+| subagent caller 可显式选择 provider / model / reasoning / max output | DSHelm 保持 policy resolution 为来源，并映射到官方 `agentOptions` seam；max-output policy 尚未宣称实现 |
+| 旧 `packages/client/runtime` / `@deepseek-ai/dsh-client-runtime` 从 0.1.2 source tree 消失 | browser source 改为只依赖实际使用的 `sessions.binding(...).session.projections` 结构；不再 import legacy runtime client types |
+| `@deepseek-ai/dsh-client-modules` 成为 `dsh.client` 扫描、boot graph、`/plugins` bundle 与 lazy materialization 的模块系统 | 已审计新机制；`@dshelm/dsh` manifest 的 dependency/inject set 必须在 exact-version + lockfile promotion 时整体迁移并用真实 Web load 验证 |
+
+这里刻意没有直接把所有 package manifest 改成 `0.1.2-rc.1`：上游 npm 发布在 2026-09-03 处于滚动状态，而且 DSHelm 当前 lockfile 仍属于已验证旧基线。**版本 promotion 必须和完整 package availability、client module graph、lockfile regeneration、fresh install/profile boot/Web client materialization 一起完成。**
+
+<details>
+<summary><strong>为什么不使用宽泛的“支持 0.1.x”声明？</strong></summary>
+
+DSH 的 session、subagent、client 与 profile seams 在 prerelease 阶段仍会变化。DSHelm 将兼容性拆成具体 seam 与具体证据，避免一个 semver range 暗示并不存在的运行时保证。发布候选的精确流程见 [`docs/RELEASING.md`](docs/RELEASING.md)。
+
+</details>
 
 ## 从源码体验
 
-环境要求：Node.js `>=22.19.0`、pnpm `11.7.0`、可在 `PATH` 中调用的 DSH CLI。当前验证版本见 [`compatibility.json`](compatibility.json)。macOS、Linux 或 Windows 11 + WSL2 均可尝试，Windows 原生体验仍待社区验证。
+要求：Node.js `>=22.19.0`、pnpm `11.7.0`，以及当前已验证基线对应的 DSH CLI。准备升级到最新 DSH 时请先查看 [`compatibility.json`](compatibility.json)。
 
 ```bash
 git clone https://github.com/Altairpaca/dshelm.git
@@ -76,7 +135,7 @@ pnpm install --frozen-lockfile
 pnpm preview:init
 ```
 
-`preview:init` 会构建本地包，并把源码预览安装到 `$DSH_HOME/profiles/dshelm`。它不会自动登录，也不会复制 Codex、Claude 等产品的凭据。
+`preview:init` 会构建本地 packages，并把源码预览安装到 `$DSH_HOME/profiles/dshelm`；它不会自动登录，也不会复制 Codex、Claude 等产品凭据。
 
 ```bash
 dsh --profile dshelm --dump-config
@@ -86,45 +145,53 @@ node packages/cli/dist/index.js explain deepseek/deepseek-v4-flash
 dsh --profile dshelm
 ```
 
-卸载会移除项目发现信息和 `dshelm` profile，默认保留凭据：
+卸载默认保留 credentials：
 
 ```bash
 node packages/cli/dist/index.js uninstall --yes
 ```
 
 > [!NOTE]
-> npm alpha 发布后的目标入口是 `npx dshelm init --yes`。在 npm 页面真实可用前，文档不会把它写成现有安装方式。
+> npm alpha 发布后的目标入口是 `npx dshelm init --yes`。在 registry artifacts 与 clean-install evidence 都真实存在之前，README 不会把它写成当前安装方式。
 
-## 它如何工作
+## 项目结构
 
 ```text
-任务需求 → 运行时与认证硬条件 → 模型能力与证据评分 → 用户/项目/请求策略覆盖 → DSH 执行 + Resolution Trace
+@dshelm/core             policy schema · merge · resolver · Resolution Trace
+@dshelm/model-knowledge  capability evidence · provenance · confidence
+@dshelm/auth             provider/account capability discovery
+@dshelm/dsh              DSH adapter · host service · subagent provider · Web client
+@dshelm/compat-omo       read-only OmO migration
+
+dshelm                   CLI · init · doctor · auth · explain · uninstall
 ```
 
-DSHelm Core 只负责策略、配置、路由和解释；任务执行仍由 DSH 及其插件完成。详细边界见[架构说明](docs/ARCHITECTURE.md)。
+发布 package graph 由 [`release-packages.json`](release-packages.json) 维护，pack/install verification 由 `pnpm qa:pack-install` 复用。详细架构边界见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
 
-## 社区与兼容性
+## 社区与路线图
 
-项目同步维护简体中文和英文文档，并优先把兼容性结论建立在可复现证据上：DSH 版本、DeepSeek/Qwen/本地模型、Linux、macOS、Windows 11 + WSL2，以及密钥、费用、网络和数据位置等边界都应有明确记录。当前计划见[社区版本路线图](docs/community-roadmap.zh-CN.md)，桌面方向见[桌面化策略](docs/desktop.zh-CN.md)。
+| Issue | 下一阶段 |
+| --- | --- |
+| [#7 — npm alpha](https://github.com/Altairpaca/dshelm/issues/7) | 完成 DSH dependency + client-module promotion、registry publish、clean-HOME/Web install/uninstall evidence |
+| [#8 — platform matrix](https://github.com/Altairpaca/dshelm/issues/8) | Linux、macOS Apple Silicon、Windows 11 + WSL2 可复现验证 |
+| [#9 — first-run evidence](https://github.com/Altairpaca/dshelm/issues/9) | deterministic execution fixture 已落地；继续补 provider-backed evidence |
+| [#10 — contributor entry points](https://github.com/Altairpaca/dshelm/issues/10) | provider/model evidence、平台验证、文档、routing examples、reproducible bugs |
 
-使用问题和渠道选择见 [`SUPPORT.md`](SUPPORT.md)，贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，社区参与规范见 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)。中英文 Issue 和 PR 都欢迎。
+DSHelm 优先复用 DSH 的公共接口，并把通用 interface 问题反馈回上游。相关讨论：
 
-## 与 DSH 社区一起演进
+- [模型规划与执行切换 · deepseek-harness discussion #3297](https://github.com/deepseek-ai/deepseek-harness/discussions/3297)
+- [DSH 桌面宿主 · discussion #3118](https://github.com/deepseek-ai/deepseek-harness/discussions/3118)
+- [`dsh doctor` 社区契约 · discussion #1719](https://github.com/deepseek-ai/deepseek-harness/discussions/1719)
+- [CLI provider 与 fallback · discussion #3283](https://github.com/deepseek-ai/deepseek-harness/discussions/3283)
 
-DSHelm 是 DSH 生态的一部分，不是 DSH 的替代品。项目会优先在官方 Discussion 中讨论公共接口和可复用契约：
-
-- [模型规划与执行切换 #3297](https://github.com/deepseek-ai/deepseek-harness/discussions/3297)
-- [DSH 桌面宿主 #3118](https://github.com/deepseek-ai/deepseek-harness/discussions/3118)
-- [`dsh doctor` 社区契约 #1719](https://github.com/deepseek-ai/deepseek-harness/discussions/1719)
-- [安全的 CLI provider 与 fallback #3283](https://github.com/deepseek-ai/deepseek-harness/discussions/3283)
-
-欢迎提交一个真实任务、一次安装记录、一个路由结果，或 Windows、WSL2、本地模型和 provider 的验证结果。请使用 [GitHub Issues](https://github.com/Altairpaca/dshelm/issues) 报告可复现问题；涉及 DSH 公共能力的讨论会同步回对应的官方 Discussion。
+贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，使用与支持渠道见 [`SUPPORT.md`](SUPPORT.md)，社区规范见 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)。Issue / PR 可以使用英文或简体中文。
 
 ## 安全与事实边界
 
-- 只有不透明的 `CredentialRef` 会进入策略和 trace；产品自有 secret 仍由产品管理。
-- 无法可靠确认的认证状态会显示为 `unknown`，不会猜测为已登录。
-- 模型软评分是带来源和置信度的维护者启发式，不是模型排行榜。
-- DSHelm 不隶属于 DeepSeek，也不代表文中提到的模型或厂商。
+- 只有不透明 `CredentialRef` 会进入策略和 trace；产品自有 secret 仍由产品管理。
+- 无法可靠确认的认证状态显示为 `unknown`，不会猜测为已登录。
+- 模型软评分是带来源与置信度的维护者启发式，不是模型排行榜。
+- synthetic fixture 只证明 routing / DSH execution contract，不证明外部 provider 的可用性或模型质量。
+- DSHelm 是独立社区项目，不隶属于 DeepSeek，也不代表文中提到的模型或厂商。
 
 Apache License 2.0。
