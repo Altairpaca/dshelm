@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "dshelm.compat-candidates/v1",
+  "candidates": [
+    {
+      "runtime": "@deepseek-ai/dsh",
+      "version": "0.1.2-rc.1",
+      "state": "blocked",
+      "requiredChecks": [
+        "package-graph-complete",
+        "workspace-typecheck",
+        "packed-release-install",
+        "isolated-profile-journey",
+        "web-client-boot",
+        "dshelm-client-bundle-materialized"
+      ],
+      "blockers": [
+        {
+          "id": "deepseek-harness-discussion-5544",
+          "surface": "web-client",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/5544",
+          "summary": "client-modules build-time externals drift can break session/workspace controllers",
+          "resolved": false
+        },
+        {
+          "id": "deepseek-harness-discussion-5628",
+          "surface": "single-exe-web",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/5628",
+          "summary": "single-exe Web boot can lose dsh.client metadata behind moduleFallback proxies",
+          "resolved": false
+        }
+      ]
+    }
+  ]
+}
