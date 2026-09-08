@@ -117,7 +117,7 @@ cat > "$DSH_CLI_DIR/pnpm-workspace.yaml" <<'YAML'
 allowBuilds:
   '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.8': true
   '@google/genai@1.52.0': true
-  'koffi@3.2.0': true
+  'koffi@3.2.1': true
   'node-pty@1.2.0-beta.15': true
   'protobufjs@7.6.6': true
 YAML
