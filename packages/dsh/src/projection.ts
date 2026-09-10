@@ -3,12 +3,13 @@
  *
  * The host publishes whole-value `dshelm/control-plane` events; this unit
  * folds them into the `dshelm.controlPlane` projection key, which the
- * official `session/projection` wire + client `useProjection` seat deliver
+ * official `session/projection` wire + client projection face deliver
  * to the browser. Registered through `ctx.sessionProjections.register`.
  */
 import { z } from 'zod'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import './projection-types.ts'
 import type { ControlPlaneProjectionValue } from './session-events.ts'
 
 /**
