@@ -28,7 +28,36 @@ function runtimeEvidence(
 }
 
 const v41Flash = 'deepseek/deepseek-flash'
+const v4Flash = 'deepseek/deepseek-v4-flash'
+const v4Pro = 'deepseek/deepseek-v4-pro'
 const visionExp = 'deepseek/deepseek-v4-flash-vision-exp'
+
+/**
+ * Refresh only the current DSH catalog fact shared by the older V4 records.
+ * Their older DeepSeek-owned protocol/reasoning/auth evidence and heuristic
+ * routing scores remain untouched, including their original observation dates.
+ */
+export function withCurrentDeepSeekV4CatalogEvidence(record: ModelKnowledgeRecord): ModelKnowledgeRecord {
+  if (record.id !== v4Flash && record.id !== v4Pro) return record
+  const evidenceId = record.id === v4Flash
+    ? 'deepseek-v4-flash-dsh-context-015'
+    : 'deepseek-v4-pro-dsh-context-015'
+  return {
+    ...record,
+    hard: { ...record.hard, contextWindow: 1_000_000 },
+    evidence: [
+      ...record.evidence,
+      runtimeEvidence(
+        evidenceId,
+        record.id,
+        'contextWindow',
+        1_000_000,
+        dshRelease,
+        dshCatalogUrl,
+      ),
+    ],
+  }
+}
 
 export const DEEPSEEK_CURRENT_RECORDS = [
   {
