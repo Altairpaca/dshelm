@@ -40,6 +40,18 @@ function pinDshDependencies(manifest) {
   }
 }
 
+// Qualify the plugin inside the exact published DSH host cohort. Current DSH
+// prerelease packages publish workspace peers as stable-looking ranges such as
+// `>=0.1.5 <0.2.0-0`; those ranges do not themselves select 0.1.5-rc.1 from
+// the `next` dist-tag. A real DSH installation provides those peers through
+// the host package graph, so the transient workspace must model that host
+// rather than asking pnpm to invent a future stable peer.
+const rootPath = 'package.json'
+const root = read(rootPath)
+root.devDependencies ??= {}
+root.devDependencies['@deepseek-ai/dsh'] = candidate
+write(rootPath, root)
+
 const dshPath = 'packages/dsh/package.json'
 const dsh = read(dshPath)
 pinDshDependencies(dsh)
@@ -78,6 +90,10 @@ stage "assert candidate graph is coherent"
 node - "$CANDIDATE_VERSION" <<'NODE'
 const fs = require('node:fs')
 const candidate = process.argv[2]
+const root = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+if (root.devDependencies?.['@deepseek-ai/dsh'] !== candidate) {
+  throw new Error(`root host=${root.devDependencies?.['@deepseek-ai/dsh']}, expected ${candidate}`)
+}
 for (const path of ['packages/dsh/package.json', 'packages/cli/package.json']) {
   const manifest = JSON.parse(fs.readFileSync(path, 'utf8'))
   for (const bucket of ['dependencies', 'devDependencies']) {
