@@ -82,39 +82,28 @@ NODE
 stage "seed exact candidate release-age exclusions"
 # The repository intentionally reviews fresh dependencies before allowing them
 # into the verified graph. This candidate lane has a different purpose: inspect
-# the exact, explicitly selected same-day DSH prerelease. pnpm can auto-add new
-# package names to minimumReleaseAgeExclude during a non-frozen install, but
-# names already represented by an older verified-version entry are not always
-# duplicated for the candidate. Add only those exact candidate counterparts in
-# this disposable checkout. Never disable minimum-release-age globally and
-# never use a wildcard that would approve future DSH versions.
+# the exact, explicitly selected same-day DSH prerelease. For package names that
+# already carry a verified-version exclusion, pnpm's version-policy parser must
+# see the two allowed versions as one disjunction; duplicate exact entries for
+# the same package are not a stable multi-version representation. Keep both
+# versions exact so this never becomes a wildcard approval for future releases.
 node - "$TESTED_VERSION" "$CANDIDATE_VERSION" <<'NODE'
 const fs = require('node:fs')
 const [tested, candidate] = process.argv.slice(2)
 const path = 'pnpm-workspace.yaml'
-const input = fs.readFileSync(path, 'utf8')
-const lines = input.split('\n')
+const lines = fs.readFileSync(path, 'utf8').split('\n')
 const escaped = tested.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const pattern = new RegExp(`^(\\s*-\\s*['\"]?)(@deepseek-ai/dsh-[^@'\"]+)@${escaped}(['\"]?\\s*)$`)
-const candidates = []
-for (const line of lines) {
-  const match = line.match(pattern)
-  if (match) candidates.push(`${match[1]}${match[2]}@${candidate}${match[3]}`)
+let rewritten = 0
+for (let i = 0; i < lines.length; i += 1) {
+  const match = lines[i].match(pattern)
+  if (!match) continue
+  lines[i] = `${match[1]}${match[2]}@${tested} || ${candidate}${match[3]}`
+  rewritten += 1
 }
-if (candidates.length === 0) throw new Error(`no verified DSH release-age exclusions found for ${tested}`)
-
-// Insert the candidate entries at the end of minimumReleaseAgeExclude instead
-// of appending them at EOF, where YAML would interpret them as belonging to a
-// later top-level key if one is added in the future.
-const keyIndex = lines.findIndex((line) => line.trim() === 'minimumReleaseAgeExclude:')
-if (keyIndex < 0) throw new Error('minimumReleaseAgeExclude section missing')
-let end = keyIndex + 1
-while (end < lines.length && (lines[end].trim() === '' || /^\s+-\s/.test(lines[end]))) end += 1
-const existing = new Set(lines.slice(keyIndex + 1, end).map((line) => line.trim()))
-const additions = candidates.filter((line) => !existing.has(line.trim()))
-lines.splice(end, 0, ...additions)
+if (rewritten === 0) throw new Error(`no verified DSH release-age exclusions found for ${tested}`)
 fs.writeFileSync(path, lines.join('\n'))
-console.log(`seeded ${additions.length} exact ${candidate} release-age exclusions`)
+console.log(`rewrote ${rewritten} DSH exclusions as exact ${tested} || ${candidate} disjunctions`)
 NODE
 
 stage "resolve transient candidate graph"
