@@ -40,6 +40,28 @@ describe('model knowledge', () => {
     if (visionExp.found) expect(visionExp.soft).toEqual([])
   })
 
+  it('refreshes only the current DSH catalog facts for older DeepSeek V4 routes', () => {
+    for (const model of ['deepseek-v4-flash', 'deepseek-v4-pro']) {
+      const record = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.provider === 'deepseek' && entry.model === model)
+      expect(record).toBeDefined()
+      expect(record?.hard.contextWindow).toBe(1_000_000)
+      const currentContext = record?.evidence.find((item) => item.id === `deepseek-v4-${model.endsWith('flash') ? 'flash' : 'pro'}-dsh-context-015`)
+      expect(currentContext).toMatchObject({
+        layer: 'runtime',
+        claimType: 'contextWindow',
+        value: 1_000_000,
+        sourceCommit: '183f08e9c6dde7e36cd2318eaee70b0da08fb35e',
+      })
+    }
+
+    const legacyFlash = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.model === 'deepseek-v4-flash')
+    expect(legacyFlash?.soft.find((item) => item.capability === 'fanOutSuitability')?.score).toBe(0.88)
+    expect(legacyFlash?.evidence.find((item) => item.id === 'deepseek-flash-protocol')?.observedAt).toBe('2026-08-18T03:00:00+08:00')
+
+    const unrelated = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.provider === 'openai')
+    expect(unrelated?.evidence[0]?.observedAt).toBe('2026-08-18T03:00:00+08:00')
+  })
+
   it('parses a data-only bundle and rejects evidence-free records', () => {
     const bundle: KnowledgeBundle = {
       schemaVersion: 1,
