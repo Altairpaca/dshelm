@@ -9,7 +9,7 @@
  *  2. the session log's `request/header` events (the logged request header).
  *
  * Both must equal the DSHelm ResolutionTrace (provider/model/reasoningEffort).
- * The harness is keyless: real rc.6 packages (LlmRuntime, SessionStore,
+ * The harness is keyless: real rc.7 packages (LlmRuntime, SessionStore,
  * SystemPrompt, ToolRuntime, AgentRegistry, AgentLoop) + a scripted test
  * adapter — no credentials, no external checkouts.
  */
@@ -34,8 +34,9 @@ import {
   installDSHelmSelection,
   toModelSelection,
 } from '../src/index.ts'
+import { snapshotSessionLog } from '../src/session-log-compat.ts'
 
-/** Scripted rc.6 test adapter: records the actual GenerateOptions. */
+/** Scripted rc.7 test adapter: records the actual GenerateOptions. */
 class ScriptedAdapter extends LlmAdapter {
   requests: GenerateOptions[] = []
 
@@ -51,7 +52,7 @@ class ScriptedAdapter extends LlmAdapter {
   }
 
   // LlmRuntime.resolveModelInfo (the service seam) delegates to the
-  // adapter's resolveModel(provider, model, signal) — rc.6 lib/index.js.
+  // adapter's resolveModel(provider, model, signal).
   resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
     return Promise.resolve({
       provider,
@@ -114,7 +115,7 @@ async function harness() {
 
 function lastAssistantText(agent: Agent): string {
   let text = ''
-  for (const event of agent.session.events) {
+  for (const event of snapshotSessionLog(agent.session)) {
     if (event.type === 'assistant/message') {
       const joined = event.data.message.content
         .filter((block) => block.type === 'text')
@@ -169,7 +170,7 @@ describe('keyless real-execution contract (request/header == ResolutionTrace)', 
       expect(lastAssistantText(agent)).toBe('ok')
 
       // 4. The session log carries the request/header with the same config.
-      const headers = agent.session.events.filter((event) => event.type === 'request/header')
+      const headers = snapshotSessionLog(agent.session).filter((event) => event.type === 'request/header')
       expect(headers.length).toBeGreaterThanOrEqual(1)
       const header = headers[headers.length - 1]
       expect(header?.type).toBe('request/header')
@@ -229,9 +230,9 @@ describe('keyless real-execution contract (request/header == ResolutionTrace)', 
   })
 
   it('fails loud before I/O when the resolved reasoning effort is unsupported', async () => {
-    const { ctx, adapter, service } = await harness()
+    const { adapter, service } = await harness()
     // 'deep-think' is not among the adapter's efforts: the runtime rejects it
-    // at prepareCall (UNSUPPORTED_REASONING_EFFORT), before any stream I/O.
+    // before any stream I/O.
     const resolved = await service.resolve({
       category: 'plan',
       override: { provider: 'dshelm-test', model: 'dshelm-pro', reasoning: 'deep-think' },

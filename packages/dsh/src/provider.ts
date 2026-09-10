@@ -5,8 +5,8 @@
  *
  * Fail-loud contract: `SubagentRuntime.start` itself rejects any requested
  * field whose provider capability is missing (`UNSUPPORTED_CAPABILITY`),
- * so a provider without toolFilter/persona/depth support can never silently
- * ignore DSHelm policy.
+ * so a provider without toolFilter/persona/depth/agentOptions support can never
+ * silently ignore DSHelm policy.
  */
 import type { Context } from '@deepseek-ai/cordis'
 import type { SubagentProvider, ResolvedSubagentStartRequest, SubagentRun } from '@deepseek-ai/dsh-subagent'
@@ -17,6 +17,17 @@ import type { DSHelmPolicyServiceFace } from './service.ts'
 
 export const DSHELM_PROVIDER_NAME = 'dshelm'
 const ROLE_LABEL_PREFIX = 'dshelm:'
+
+// DSH 0.1.5 makes `agentOptions` an explicit start-time capability. Keeping
+// this value as a standalone structural object preserves compilation against
+// the verified rc.7 type surface while exposing the current runtime flag.
+const DSHELM_SUBAGENT_CAPABILITIES = Object.freeze({
+  agentOptions: true,
+  outputSchema: false,
+  depthLimit: true,
+  toolFilter: true,
+  persona: true,
+})
 
 export interface DSHelmProviderOptions {
   readonly service: DSHelmPolicyServiceFace
@@ -52,7 +63,7 @@ export function childRequestHeaderSeed(resolved: ResolvedAgentPolicy): SessionEv
 export function createDSHelmProvider(options: DSHelmProviderOptions): SubagentProvider {
   return {
     name: DSHELM_PROVIDER_NAME,
-    capabilities: { outputSchema: false, depthLimit: true, toolFilter: true, persona: true },
+    capabilities: DSHELM_SUBAGENT_CAPABILITIES,
     inheritsParentContext: false,
     start: async (request: ResolvedSubagentStartRequest): Promise<SubagentRun> => {
       const role = roleFromLabel(request.label)
