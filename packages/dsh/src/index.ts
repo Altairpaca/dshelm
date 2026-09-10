@@ -100,6 +100,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
 export * from './backends.ts'
 export * from './capabilities.ts'
 export * from './config-files.ts'
+export * from './effective-route.ts'
 export * from './model-selection.ts'
 export * from './knowledge.ts'
 export * from './projection.ts'
