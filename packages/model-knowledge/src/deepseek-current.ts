@@ -47,6 +47,8 @@ const visionExp = 'deepseek/deepseek-v4-flash-vision-exp'
 export function withCurrentDeepSeekV4CatalogEvidence(record: ModelKnowledgeRecord): ModelKnowledgeRecord {
   if (record.id !== v4Flash && record.id !== v4Pro) return record
   const route = record.id === v4Flash ? 'flash' : 'pro'
+  const legacyReasoningEvidenceId = `deepseek-${route}-reasoning`
+  const currentReasoningEvidenceId = `deepseek-v4-${route}-dsh-reasoning-015`
   return {
     ...record,
     hard: {
@@ -54,6 +56,10 @@ export function withCurrentDeepSeekV4CatalogEvidence(record: ModelKnowledgeRecor
       contextWindow: 1_000_000,
       reasoningEfforts: [...currentReasoningEfforts],
     },
+    adaptationHints: record.adaptationHints.map((hint) => ({
+      ...hint,
+      evidenceIds: hint.evidenceIds.map((id) => id === legacyReasoningEvidenceId ? currentReasoningEvidenceId : id),
+    })),
     evidence: [
       ...record.evidence.filter((item) => item.claimType !== 'reasoningEfforts'),
       runtimeEvidence(
@@ -65,7 +71,7 @@ export function withCurrentDeepSeekV4CatalogEvidence(record: ModelKnowledgeRecor
         dshCatalogUrl,
       ),
       runtimeEvidence(
-        `deepseek-v4-${route}-dsh-reasoning-015`,
+        currentReasoningEvidenceId,
         record.id,
         'reasoningEfforts',
         [...currentReasoningEfforts],
