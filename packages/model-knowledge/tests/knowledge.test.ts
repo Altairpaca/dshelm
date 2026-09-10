@@ -20,6 +20,27 @@ describe('model knowledge', () => {
     })
   })
 
+  it('tracks current DSH DeepSeek multimodal catalog facts without manufacturing runtime readiness', () => {
+    const v41 = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-flash')
+    expect(v41).toMatchObject({
+      found: true,
+      displayName: 'DeepSeek-V41-Flash',
+      hard: { runtimeReady: false, contextWindow: 1_000_000, vision: true },
+    })
+    if (v41.found) {
+      expect(v41.soft).toEqual([])
+      expect(v41.evidence.some((item) => item.source.includes('dsh-v0.1.5-rc.1'))).toBe(true)
+    }
+
+    const visionExp = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-v4-flash-vision-exp')
+    expect(visionExp).toMatchObject({
+      found: true,
+      displayName: 'DeepSeek-V4-Flash-Vision-Exp',
+      hard: { runtimeReady: false, contextWindow: 1_000_000, vision: true },
+    })
+    if (visionExp.found) expect(visionExp.soft).toEqual([])
+  })
+
   it('parses a data-only bundle and rejects evidence-free records', () => {
     const bundle: KnowledgeBundle = {
       schemaVersion: 1,
