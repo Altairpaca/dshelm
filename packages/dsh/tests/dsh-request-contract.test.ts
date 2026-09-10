@@ -28,10 +28,11 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { type PolicyDocument } from '@dshelm/core'
+import { classifyRouteDivergence, type PolicyDocument } from '@dshelm/core'
 import {
   DSHelmPolicyService,
   installDSHelmSelection,
+  observeEffectiveRouteFromSession,
   toModelSelection,
 } from '../src/index.ts'
 import { snapshotSessionLog } from '../src/session-log-compat.ts'
@@ -182,7 +183,30 @@ describe('keyless real-execution contract (request/header == ResolutionTrace)', 
         })
       }
 
-      // 5. Acceptance: ResolutionTrace == actual request config.
+      // 5. Production observation is built from the durable request/header,
+      // not from the policy object or root-agent display state.
+      const observation = observeEffectiveRouteFromSession({
+        session: agent.session,
+        resolved,
+        sessionId: String(sessionId),
+        now: () => '2026-09-10T00:00:00.000Z',
+      })
+      expect(observation).toEqual({
+        version: 1,
+        resolved: { provider: 'dshelm-test', model: 'dshelm-pro', reasoning: 'high' },
+        effective: { provider: 'dshelm-test', model: 'dshelm-pro', reasoning: 'high' },
+        role: 'planner',
+        sessionId: 'dshelm-request-contract',
+        evidenceSource: 'dsh.session.request/header',
+        observedAt: '2026-09-10T00:00:00.000Z',
+      })
+      expect(classifyRouteDivergence(observation!)).toMatchObject({
+        kind: 'same-route',
+        matchesResolved: true,
+        runtimeChanges: [],
+      })
+
+      // 6. Acceptance: ResolutionTrace == actual request config.
       expect(resolved.trace.selected).toEqual({
         provider: 'dshelm-test',
         model: 'dshelm-pro',
@@ -191,6 +215,9 @@ describe('keyless real-execution contract (request/header == ResolutionTrace)', 
       expect(actual?.provider).toBe(resolved.trace.selected?.provider)
       expect(actual?.model).toBe(resolved.trace.selected?.model)
       expect(actual?.reasoningEffort).toBe(ReasoningEffortId(resolved.trace.selected?.reasoning ?? ''))
+      expect(observation?.effective.provider).toBe(actual?.provider)
+      expect(observation?.effective.model).toBe(actual?.model)
+      expect(observation?.effective.reasoning).toBe(String(actual?.reasoningEffort))
     } finally {
       await handle.dispose()
     }
@@ -224,6 +251,46 @@ describe('keyless real-execution contract (request/header == ResolutionTrace)', 
       expect(actual?.provider).toBe('dshelm-test')
       expect(actual?.model).toBe('dshelm-flash')
       expect(actual?.reasoningEffort).toBe(ReasoningEffortId('max'))
+
+      const observation = observeEffectiveRouteFromSession({
+        session: agent.session,
+        requested: { provider: 'dshelm-test', model: 'dshelm-pro', reasoning: 'high' },
+        resolved,
+        resolutionCause: 'explicit-override',
+        sessionId: String(sessionId),
+        now: () => '2026-09-10T00:00:00.000Z',
+      })
+      expect(observation?.effective).toEqual({
+        provider: 'dshelm-test',
+        model: 'dshelm-flash',
+        reasoning: 'max',
+      })
+      expect(classifyRouteDivergence(observation!)).toMatchObject({
+        kind: 'explicit-override',
+        matchesResolved: true,
+        policyChanges: ['model', 'reasoning'],
+        runtimeChanges: [],
+      })
+    } finally {
+      await handle.dispose()
+    }
+  })
+
+  it('does not fabricate effective state when no request/header exists', async () => {
+    const { ctx, service } = await harness()
+    const resolved = await service.resolve({ category: 'plan' })
+    const sessionId = SessionId('dshelm-request-contract-no-io')
+    const handle = await ctx.agents.create({
+      sessionId,
+      meta: { cwd: process.cwd(), origin: 'subagent' },
+      agentOptions: { provider: resolved.provider, model: resolved.model },
+    })
+    try {
+      expect(observeEffectiveRouteFromSession({
+        session: handle.agent.session,
+        resolved,
+        sessionId: String(sessionId),
+      })).toBeUndefined()
     } finally {
       await handle.dispose()
     }
