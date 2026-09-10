@@ -1,19 +1,17 @@
 /**
  * DSHelm session events (merge-extensible `SessionEventMap` entry) and the
- * control-plane projection value.
+ * control-plane projection wire value.
  *
- * Transport design (v0.1): the host appends a whole-value
- * `dshelm/control-plane` event to the PARENT session after every
- * policy-driven delegation; `dsh-session-projection` folds it into the
- * `dshelm.controlPlane` projection key, which reaches the browser through
- * the official `session/projection` wire frames and the client's
- * `useProjection` seat. No second UI-only explanation model exists: the
- * projection value IS the canonical `ResolutionTrace`-derived snapshot.
+ * Transport design: the host appends a whole-value `dshelm/control-plane`
+ * event to the PARENT session after every policy-driven delegation;
+ * `dsh-session-projection` folds it into the `dshelm.controlPlane` projection
+ * key, which reaches the browser through the official projection wire path.
+ * No second UI-only explanation model exists: the projection value IS the
+ * canonical `ResolutionTrace`-derived snapshot.
  *
- * Augmentation target: `SessionEventMap` is declared in the
- * `@deepseek-ai/dsh-session/types` submodule (lib/types/types.d.ts), NOT the
- * package root — augmenting the root is a silent no-op (verified rc.6;
- * official pattern: subagent/src/descriptor.ts).
+ * This shared file is compiled into both host and browser declarations. Keep
+ * the host-only SessionProjectionMap augmentation in `projection-types.ts` so
+ * the browser build does not need to resolve that host package subpath.
  */
 import type { SessionEventMap } from '@deepseek-ai/dsh-session/types'
 import type { ResolutionTrace } from '@dshelm/core'
@@ -56,16 +54,10 @@ export type ControlPlaneProjectionValue = ControlPlaneSnapshot
 declare module '@deepseek-ai/dsh-session/types' {
   interface SessionEventMap {
     /**
-     * Whole-value DSHelm control-plane snapshot. `ignorable` is set: the
-     * snapshot is informational for reconstruction — the policy trace never
-     * changes how the log is interpreted.
+     * Whole-value DSHelm control-plane snapshot. `ignorable` is set by the
+     * projection contract: this event is informational for reconstruction and
+     * never changes how the underlying Session log is interpreted.
      */
     'dshelm/control-plane': ControlPlaneSnapshot
-  }
-}
-
-declare module '@deepseek-ai/dsh-session-projection/types' {
-  interface SessionProjectionMap {
-    'dshelm.controlPlane': ControlPlaneProjectionValue
   }
 }
