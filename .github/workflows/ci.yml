@@ -43,7 +43,7 @@ jobs:
       - name: Build workspace
         run: pnpm build
       - name: Core unit contracts
-        run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts
+        run: pnpm vitest run packages/core/tests/config-loader.test.ts packages/core/tests/config-validation.test.ts packages/core/tests/policy-errors.test.ts packages/core/tests/policy-resolver.test.ts packages/core/tests/effective-route.test.ts
       - name: Core property contracts
         run: pnpm vitest run packages/core/tests/core-property.test.ts
       - name: DSH execution and host contracts
