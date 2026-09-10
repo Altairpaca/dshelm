@@ -1,4 +1,4 @@
-export { BASELINE_KNOWLEDGE_BUNDLE } from './baseline.ts'
+export { BASELINE_KNOWLEDGE_BUNDLE } from './current-baseline.ts'
 export { AhiSummarySchema, knowledgeBundleFromAhiSummaries } from './ahi.ts'
 export { explainModel, knowledgeStatus, parseKnowledgeBundle, runtimeKnowledgeOverlay } from './knowledge.ts'
 export { KnowledgeBundleSchema } from './contracts.ts'
