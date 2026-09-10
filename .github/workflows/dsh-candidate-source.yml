@@ -1,0 +1,44 @@
+name: dsh-candidate-source
+
+on:
+  pull_request:
+    paths:
+      - compatibility-candidates.json
+      - compatibility.json
+      - packages/dsh/**
+      - packages/cli/**
+      - packages/model-knowledge/**
+      - scripts/qa-dsh-candidate-source.sh
+      - .github/workflows/dsh-candidate-source.yml
+  push:
+    branches:
+      - main
+    paths:
+      - compatibility-candidates.json
+      - compatibility.json
+      - packages/dsh/**
+      - packages/cli/**
+      - packages/model-knowledge/**
+      - scripts/qa-dsh-candidate-source.sh
+      - .github/workflows/dsh-candidate-source.yml
+  workflow_dispatch:
+
+concurrency:
+  group: dsh-candidate-source-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  candidate-source-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: DSH candidate source-graph qualification
+        run: bash scripts/qa-dsh-candidate-source.sh
