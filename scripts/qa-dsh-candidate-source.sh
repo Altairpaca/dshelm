@@ -94,23 +94,26 @@ const [tested, candidate] = process.argv.slice(2)
 const path = 'pnpm-workspace.yaml'
 const input = fs.readFileSync(path, 'utf8')
 const lines = input.split('\n')
-const additions = []
-const seen = new Set(lines.map((line) => line.trim()))
 const escaped = tested.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const pattern = new RegExp(`^(\\s*-\\s*['\"]?)(@deepseek-ai/dsh-[^@'\"]+)@${escaped}(['\"]?\\s*)$`)
+const candidates = []
 for (const line of lines) {
   const match = line.match(pattern)
-  if (!match) continue
-  const candidateLine = `${match[1]}${match[2]}@${candidate}${match[3]}`
-  if (!seen.has(candidateLine.trim())) {
-    additions.push(candidateLine)
-    seen.add(candidateLine.trim())
-  }
+  if (match) candidates.push(`${match[1]}${match[2]}@${candidate}${match[3]}`)
 }
-if (additions.length === 0) {
-  throw new Error(`no verified DSH release-age exclusions found for ${tested}`)
-}
-fs.writeFileSync(path, `${lines.join('\n').replace(/\n+$/, '')}\n${additions.join('\n')}\n`)
+if (candidates.length === 0) throw new Error(`no verified DSH release-age exclusions found for ${tested}`)
+
+// Insert the candidate entries at the end of minimumReleaseAgeExclude instead
+// of appending them at EOF, where YAML would interpret them as belonging to a
+// later top-level key if one is added in the future.
+const keyIndex = lines.findIndex((line) => line.trim() === 'minimumReleaseAgeExclude:')
+if (keyIndex < 0) throw new Error('minimumReleaseAgeExclude section missing')
+let end = keyIndex + 1
+while (end < lines.length && (lines[end].trim() === '' || /^\s+-\s/.test(lines[end]))) end += 1
+const existing = new Set(lines.slice(keyIndex + 1, end).map((line) => line.trim()))
+const additions = candidates.filter((line) => !existing.has(line.trim()))
+lines.splice(end, 0, ...additions)
+fs.writeFileSync(path, lines.join('\n'))
 console.log(`seeded ${additions.length} exact ${candidate} release-age exclusions`)
 NODE
 
