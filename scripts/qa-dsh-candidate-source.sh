@@ -79,6 +79,41 @@ cli.dependencies['@earendil-works/pi-ai'] = '0.85.1'
 write(cliPath, cli)
 NODE
 
+stage "seed exact candidate release-age exclusions"
+# The repository intentionally reviews fresh dependencies before allowing them
+# into the verified graph. This candidate lane has a different purpose: inspect
+# the exact, explicitly selected same-day DSH prerelease. pnpm can auto-add new
+# package names to minimumReleaseAgeExclude during a non-frozen install, but
+# names already represented by an older verified-version entry are not always
+# duplicated for the candidate. Add only those exact candidate counterparts in
+# this disposable checkout. Never disable minimum-release-age globally and
+# never use a wildcard that would approve future DSH versions.
+node - "$TESTED_VERSION" "$CANDIDATE_VERSION" <<'NODE'
+const fs = require('node:fs')
+const [tested, candidate] = process.argv.slice(2)
+const path = 'pnpm-workspace.yaml'
+const input = fs.readFileSync(path, 'utf8')
+const lines = input.split('\n')
+const additions = []
+const seen = new Set(lines.map((line) => line.trim()))
+const escaped = tested.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const pattern = new RegExp(`^(\\s*-\\s*['\"]?)(@deepseek-ai/dsh-[^@'\"]+)@${escaped}(['\"]?\\s*)$`)
+for (const line of lines) {
+  const match = line.match(pattern)
+  if (!match) continue
+  const candidateLine = `${match[1]}${match[2]}@${candidate}${match[3]}`
+  if (!seen.has(candidateLine.trim())) {
+    additions.push(candidateLine)
+    seen.add(candidateLine.trim())
+  }
+}
+if (additions.length === 0) {
+  throw new Error(`no verified DSH release-age exclusions found for ${tested}`)
+}
+fs.writeFileSync(path, `${lines.join('\n').replace(/\n+$/, '')}\n${additions.join('\n')}\n`)
+console.log(`seeded ${additions.length} exact ${candidate} release-age exclusions`)
+NODE
+
 stage "resolve transient candidate graph"
 # The committed lockfile and package manifests remain the verified rc.7 graph.
 # This install mutates only the disposable Actions checkout. Lifecycle/native
