@@ -90,7 +90,11 @@ async function probeRuntime(): Promise<{ rows: Row[]; failed: boolean }> {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(SessionStore)
-    await ctx.plugin(SystemPrompt, { persona: '' })
+    // Empty config is valid in both the verified rc.7 SystemPrompt generation
+    // (`persona?`) and current DSH (`personaPrefix?` / `personaSuffix?`). The
+    // doctor probe registers its scoped prompt section separately, so it does
+    // not need a deployment persona here.
+    await ctx.plugin(SystemPrompt, {})
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(AgentRegistry)
     await ctx.plugin(AgentLoop, { agents: [] })

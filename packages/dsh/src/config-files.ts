@@ -4,17 +4,20 @@
  *
  * Precedence (tested): defaults → user → project → request → runtime
  * validation. The user layer comes from `ctx.settings` when a settings
- * provider is composed (official settings-namespace seam); the project layer
- * is the committed file; request layers come from the resolve call.
+ * provider is composed; the project layer is the committed file; request
+ * layers come from the resolve call.
  */
 import { readFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
+import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
 import { loadPolicyLayers, type PolicyDocument, type PolicyLayerValue } from '@dshelm/core'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
 
 export const DSHELM_CONFIG_DIR = '.dshelm'
 export const DSHELM_CONFIG_FILE = 'config.jsonc'
-export const DSHELM_SETTINGS_NAMESPACE = settingsNamespace('dshelm')
+// rc.7 exported settingsNamespace(); current DSH validates the literal inside
+// SettingsProvider.register(). The branded literal works with both type surfaces
+// without depending on the removed value export.
+export const DSHELM_SETTINGS_NAMESPACE = 'dshelm' as SettingsNamespace
 
 /** Schema-backed user-level override document (optional fields). */
 export interface DSHelmUserSettings {
@@ -22,6 +25,32 @@ export interface DSHelmUserSettings {
   readonly agents?: Record<string, unknown>
   readonly categories?: Record<string, unknown>
 }
+
+/**
+ * Minimal callable schema accepted by both settings generations. The settings
+ * service has already merged its composition/user layers before invoking this
+ * function; full DSHelm policy validation remains owned by @dshelm/core.
+ * `toJSON` is the descriptor surface used by settings UIs.
+ */
+const dshelmUserSettingsSchema = Object.assign(
+  (value: unknown): DSHelmUserSettings => {
+    if (value === undefined) return {}
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      throw new TypeError('dshelm settings section must be an object')
+    }
+    return value as DSHelmUserSettings
+  },
+  {
+    toJSON: () => ({
+      type: 'object',
+      properties: {
+        profiles: { type: 'object' },
+        agents: { type: 'object' },
+        categories: { type: 'object' },
+      },
+    }),
+  },
+)
 
 /**
  * Load the project layer from `<cwd>/.dshelm/config.jsonc` when present.
@@ -39,32 +68,34 @@ export async function loadProjectPolicyLayer(cwd: string): Promise<PolicyLayerVa
 }
 
 /**
- * Install the `dshelm` user-settings namespace (official
- * `@deepseek-ai/dsh-settings` seam). Returns the live reader; the section
- * is fiber-owned and unwinds on disposal.
+ * Install the optional `dshelm` user-settings namespace through the stable
+ * `ctx.settings.register()` service seam shared by rc.7 and current DSH.
  *
- * `installSettingsSection(ctx, ns, schema, entry, hooks)` signature verified
- * against `@deepseek-ai/dsh-settings` rc.6: `hooks.setSource` receives a
- * THUNK returning the currently authoritative value, not the value itself.
+ * Older DSH exported an `installSettingsSection()` helper while 0.1.5 moved
+ * that convenience operation onto SettingsProvider. Depending on either helper
+ * would make this source generation-specific, so DSHelm composes the common
+ * primitive directly. The returned reader stays live because it calls
+ * `scope.get()` instead of snapshotting the value at registration time.
  */
 export function installDSHelmSettings(
   ctx: Context,
   base: DSHelmUserSettings,
 ): () => DSHelmUserSettings | undefined {
-  let source: DSHelmUserSettings = base
-  installSettingsSection(
-    ctx,
-    DSHELM_SETTINGS_NAMESPACE,
-    // Minimal schema: free-form policy sections layered on the base document.
-    // Full schema validation happens in @dshelm/core at load time.
-    { profiles: { type: 'object' }, agents: { type: 'object' }, categories: { type: 'object' } } as never,
-    base,
-    {
-      setSource: (current) => { source = current() },
-      onChange: () => {},
-    },
-  )
-  return () => source
+  let current: () => DSHelmUserSettings = () => base
+
+  ctx.inject(['settings'], (settingsCtx) => {
+    const scope = settingsCtx.settings.register(
+      DSHELM_SETTINGS_NAMESPACE,
+      dshelmUserSettingsSchema as never,
+      { base },
+    )
+    current = () => scope.get() as DSHelmUserSettings
+    settingsCtx.effect(() => () => {
+      current = () => base
+    })
+  })
+
+  return () => current()
 }
 
 /**
