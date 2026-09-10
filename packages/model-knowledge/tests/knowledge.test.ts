@@ -27,10 +27,9 @@ describe('model knowledge', () => {
       displayName: 'DeepSeek-V41-Flash',
       hard: { runtimeReady: false, contextWindow: 1_000_000, vision: true },
     })
-    if (v41.found) {
-      expect(v41.soft).toEqual([])
-      expect(v41.evidence.some((item) => item.source.includes('dsh-v0.1.5-rc.1'))).toBe(true)
-    }
+    if (v41.found) expect(v41.soft).toEqual([])
+    const v41Record = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.model === 'deepseek-flash')
+    expect(v41Record?.evidence.some((item) => item.source.includes('dsh-v0.1.5-rc.1'))).toBe(true)
 
     const visionExp = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-v4-flash-vision-exp')
     expect(visionExp).toMatchObject({
