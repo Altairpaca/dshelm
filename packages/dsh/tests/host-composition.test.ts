@@ -121,7 +121,7 @@ describe('DSHelm bundle host service (real composition)', () => {
       const service = ctx.reflect.get('dshelm.policy') as DSHelmPolicyServiceFace
       const resolved = await service.resolve({ category: 'implement', requirements: { needsCheapParallelism: true } })
       expect(resolved.model).toBe('deepseek-v4-flash')
-      expect(resolved.trace.modelKnowledgeSnapshot).toBe('dshelm-v0.3-baseline-2026-08-18')
+      expect(resolved.trace.modelKnowledgeSnapshot).toBe('dshelm-v0.3-baseline-2026-09-10')
     } finally {
       await fiber.dispose()
     }
