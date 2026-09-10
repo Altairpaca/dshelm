@@ -20,38 +20,61 @@ describe('model knowledge', () => {
     })
   })
 
-  it('tracks current DSH DeepSeek multimodal catalog facts without manufacturing runtime readiness', () => {
+  it('tracks current DSH DeepSeek multimodal and reasoning catalog facts without manufacturing runtime readiness', () => {
     const v41 = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-flash')
     expect(v41).toMatchObject({
       found: true,
       displayName: 'DeepSeek-V41-Flash',
-      hard: { runtimeReady: false, contextWindow: 1_000_000, vision: true },
+      hard: {
+        runtimeReady: false,
+        contextWindow: 1_000_000,
+        vision: true,
+        reasoningEfforts: ['off', 'low', 'high', 'max'],
+      },
     })
     if (v41.found) expect(v41.soft).toEqual([])
     const v41Record = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.model === 'deepseek-flash')
     expect(v41Record?.evidence.some((item) => item.source.includes('dsh-v0.1.5-rc.1'))).toBe(true)
+    expect(v41Record?.evidence.find((item) => item.id === 'deepseek-v41-dsh-reasoning')).toMatchObject({
+      layer: 'runtime',
+      claimType: 'reasoningEfforts',
+      value: ['off', 'low', 'high', 'max'],
+    })
 
     const visionExp = explainModel(BASELINE_KNOWLEDGE_BUNDLE, 'deepseek', 'deepseek-v4-flash-vision-exp')
     expect(visionExp).toMatchObject({
       found: true,
       displayName: 'DeepSeek-V4-Flash-Vision-Exp',
-      hard: { runtimeReady: false, contextWindow: 1_000_000, vision: true },
+      hard: {
+        runtimeReady: false,
+        contextWindow: 1_000_000,
+        vision: true,
+        reasoningEfforts: ['off', 'low', 'high', 'max'],
+      },
     })
     if (visionExp.found) expect(visionExp.soft).toEqual([])
   })
 
-  it('refreshes only the current DSH catalog facts for older DeepSeek V4 routes', () => {
+  it('refreshes only current DSH catalog facts for older DeepSeek V4 routes', () => {
     for (const model of ['deepseek-v4-flash', 'deepseek-v4-pro']) {
+      const route = model.endsWith('flash') ? 'flash' : 'pro'
       const record = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.provider === 'deepseek' && entry.model === model)
       expect(record).toBeDefined()
       expect(record?.hard.contextWindow).toBe(1_000_000)
-      const currentContext = record?.evidence.find((item) => item.id === `deepseek-v4-${model.endsWith('flash') ? 'flash' : 'pro'}-dsh-context-015`)
-      expect(currentContext).toMatchObject({
+      expect(record?.hard.reasoningEfforts).toEqual(['off', 'low', 'high', 'max'])
+      expect(record?.evidence.find((item) => item.id === `deepseek-v4-${route}-dsh-context-015`)).toMatchObject({
         layer: 'runtime',
         claimType: 'contextWindow',
         value: 1_000_000,
         sourceCommit: '183f08e9c6dde7e36cd2318eaee70b0da08fb35e',
       })
+      expect(record?.evidence.find((item) => item.id === `deepseek-v4-${route}-dsh-reasoning-015`)).toMatchObject({
+        layer: 'runtime',
+        claimType: 'reasoningEfforts',
+        value: ['off', 'low', 'high', 'max'],
+        sourceCommit: '183f08e9c6dde7e36cd2318eaee70b0da08fb35e',
+      })
+      expect(record?.evidence.some((item) => item.id === `deepseek-${route}-reasoning`)).toBe(false)
     }
 
     const legacyFlash = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.model === 'deepseek-v4-flash')
@@ -60,6 +83,7 @@ describe('model knowledge', () => {
 
     const unrelated = BASELINE_KNOWLEDGE_BUNDLE.records.find((entry) => entry.provider === 'openai')
     expect(unrelated?.evidence[0]?.observedAt).toBe('2026-08-18T03:00:00+08:00')
+    expect(() => parseKnowledgeBundle(BASELINE_KNOWLEDGE_BUNDLE)).not.toThrow()
   })
 
   it('parses a data-only bundle and rejects evidence-free records', () => {
