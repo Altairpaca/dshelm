@@ -1,72 +1,109 @@
 /**
- * DSHelm control-plane panel — REAL DSH client plugin (browser half).
+ * DSHelm control-plane panel — DSH Web client plugin.
  *
  * Consumes the canonical host projection (dshelm.controlPlane) through the
- * official client runtime: the current session's projection store
- * (sessions.binding(id).session.projections.faceOf(key) — the useProjection
- * resolution path). No second UI-only explanation model exists: the value IS
- * the canonical ResolutionTrace-derived snapshot.
+ * session projection face. On current DSH hosts it registers a root-level
+ * `main` panel plus the matching `sidebar.panellist` entry. Older verified
+ * hosts retain the body overlay as a compatibility fallback until the package
+ * graph itself is promoted.
  *
- * v0.2 surface: a body-mounted panel (the AgentTeams-validated pattern for
- * surfaces without a native slot seat). Conversation-slot integration is a
- * documented next increment.
+ * The client source intentionally depends only on Cordis plus a narrow local
+ * structural face for sessions/slots. The removed 0.1.5
+ * `@deepseek-ai/dsh-client-runtime/client` package is not a source dependency.
  */
+import type { Context } from '@deepseek-ai/cordis'
 import { useEffect, useState, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ControlPlaneProjectionValue } from '../session-events.ts'
 
-/** Required services: the sessions domain (list + bindings). */
+/** Required baseline service. Native slot registration is feature-detected. */
 export const inject = ['sessions'] as const
+
+const PANEL_ID = 'dshelm-control-plane'
 
 type ProjectionFace = {
   getSnapshot(): unknown
   subscribe(fn: () => void): () => void
 }
 
-function useControlPlane(sessions: ClientContext['sessions']): ControlPlaneProjectionValue | undefined {
+type SessionsFace = {
+  readonly list: {
+    getSnapshot(): { readonly current?: unknown }
+    subscribe(fn: () => void): () => void
+  }
+  binding(id: unknown): {
+    readonly session: {
+      readonly projections: {
+        faceOf(key: string): ProjectionFace | undefined
+      }
+    }
+  } | undefined
+}
+
+type SlotRegistryFace = {
+  inject(name: string, register: () => unknown): unknown
+  register(options: Readonly<Record<string, unknown>>, component: (props?: unknown) => ReactNode): unknown
+}
+
+type ClientContext = Context & {
+  readonly sessions: SessionsFace
+  readonly slots?: SlotRegistryFace
+}
+
+function useControlPlane(sessions: SessionsFace): ControlPlaneProjectionValue | undefined {
   const [value, setValue] = useState<ControlPlaneProjectionValue | undefined>(undefined)
   useEffect(() => {
-    let face: ProjectionFace | undefined
-    let unsubscribeList: (() => void) | undefined
+    let unsubscribeProjection: (() => void) | undefined
     const rebind = (): void => {
-      const current: SessionId | undefined = sessions.list.getSnapshot().current
+      unsubscribeProjection?.()
+      unsubscribeProjection = undefined
+      const current = sessions.list.getSnapshot().current
       const binding = current === undefined ? undefined : sessions.binding(current)
       const next = binding?.session.projections.faceOf('dshelm.controlPlane')
       if (next !== undefined) {
-        face = next
         const sync = (): void => setValue(next.getSnapshot() as ControlPlaneProjectionValue | undefined)
         sync()
-        next.subscribe(sync)
+        unsubscribeProjection = next.subscribe(sync)
       } else {
-        face = undefined
         setValue(undefined)
       }
     }
     rebind()
-    unsubscribeList = sessions.list.subscribe(rebind)
+    const unsubscribeList = sessions.list.subscribe(rebind)
     return () => {
-      unsubscribeList?.()
+      unsubscribeProjection?.()
+      unsubscribeList()
     }
   }, [sessions])
   return value
 }
 
-const panelStyle: Record<string, string> = {
+const basePanelStyle: Record<string, string> = {
+  overflow: 'auto',
+  background: '#0f172a',
+  color: '#e2e8f0',
+  padding: '14px 16px',
+  font: '12px/1.5 ui-sans-serif, system-ui, sans-serif',
+  boxSizing: 'border-box',
+}
+
+const overlayPanelStyle: Record<string, string> = {
+  ...basePanelStyle,
   position: 'fixed',
   right: '16px',
   bottom: '16px',
   zIndex: '2147483000',
   maxWidth: '420px',
   maxHeight: '60vh',
-  overflow: 'auto',
-  background: '#0f172a',
-  color: '#e2e8f0',
   border: '1px solid #334155',
   borderRadius: '12px',
-  padding: '14px 16px',
-  font: '12px/1.5 ui-sans-serif, system-ui, sans-serif',
   boxShadow: '0 8px 30px rgb(0 0 0 / 0.35)',
+}
+
+const nativePanelStyle: Record<string, string> = {
+  ...basePanelStyle,
+  width: '100%',
+  minHeight: '100%',
 }
 
 const thStyle: Record<string, string> = {
@@ -159,11 +196,11 @@ function Inspector({ snapshot, copy }: { snapshot: ControlPlaneProjectionValue; 
   )
 }
 
-function ControlPlanePanel({ sessions }: { sessions: ClientContext['sessions'] }): ReactNode {
+function ControlPlanePanel({ sessions, native = false }: { sessions: SessionsFace; native?: boolean }): ReactNode {
   const snapshot = useControlPlane(sessions)
   const copy = labels()
   return (
-    <aside data-dshelm-control-plane style={panelStyle}>
+    <aside data-dshelm-control-plane data-dshelm-panel-mode={native ? 'native' : 'overlay'} style={native ? nativePanelStyle : overlayPanelStyle}>
       <h1 style={{ margin: '0 0 8px', fontSize: '13px' }}>{copy.title}</h1>
       {snapshot === undefined
         ? <p>{copy.waiting}</p>
@@ -177,13 +214,53 @@ function ControlPlanePanel({ sessions }: { sessions: ClientContext['sessions'] }
   )
 }
 
-export function apply(ctx: ClientContext): void {
+function NativePanelIcon(): ReactNode {
+  return <span aria-hidden="true" style={{ fontSize: '10px', fontWeight: '700' }}>DS</span>
+}
+
+/** Register the 0.1.5 root-level panel contract when the slot service exists. */
+export function registerNativeControlPlanePanel(ctx: ClientContext): boolean {
+  const slots = ctx.slots
+  if (slots === undefined || typeof slots.inject !== 'function' || typeof slots.register !== 'function') return false
+  slots.inject('main', () => slots.register(
+    { name: 'main', key: PANEL_ID },
+    () => <ControlPlanePanel sessions={ctx.sessions} native />,
+  ))
+  slots.inject('sidebar.panellist', () => slots.register(
+    { name: 'sidebar.panellist', id: PANEL_ID, order: 70, label: 'DSHelm' },
+    NativePanelIcon,
+  ))
+  return true
+}
+
+function mountOverlay(ctx: ClientContext): (() => void) | undefined {
+  if (typeof document === 'undefined') return undefined
   const host = document.createElement('aside')
   document.body.appendChild(host)
   const root = createRoot(host)
   root.render(<ControlPlanePanel sessions={ctx.sessions} />)
-  ctx.effect(() => () => {
+  return () => {
     root.unmount()
     host.remove()
+  }
+}
+
+export function apply(ctx: ClientContext): void {
+  if (registerNativeControlPlanePanel(ctx)) return
+
+  // Preserve the verified-host UI while waiting for a slot service that may
+  // be composed later. Once current slots appear, remove the compatibility
+  // overlay and hand ownership to DSH's native main/sidebar panel system.
+  let disposeOverlay = mountOverlay(ctx)
+  ctx.effect(() => () => {
+    disposeOverlay?.()
+    disposeOverlay = undefined
+  })
+
+  ctx.inject(['slots'], (injected) => {
+    const current = injected as ClientContext
+    if (!registerNativeControlPlanePanel(current)) return
+    disposeOverlay?.()
+    disposeOverlay = undefined
   })
 }
