@@ -119,11 +119,11 @@ printf '{"private":true}\n' > "$DSH_CLI_DIR/package.json"
 cat > "$DSH_CLI_DIR/pnpm-workspace.yaml" <<'YAML'
 resolutionMode: time-based
 allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.8': true
+  '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.7': true
   '@google/genai@1.52.0': true
-  'koffi@3.2.1': true
+  'koffi@3.1.5': true
   'node-pty@1.2.0-beta.15': true
-  'protobufjs@7.6.6': true
+  'protobufjs@7.6.5': true
 YAML
 pnpm --dir "$DSH_CLI_DIR" add --save-exact --prefer-offline "@deepseek-ai/dsh@$DSH_VERSION"
 test -x "$DSH_CLI_DIR/node_modules/.bin/dsh"
