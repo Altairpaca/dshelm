@@ -4,6 +4,14 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '17 3 * * *'
+  pull_request:
+    paths:
+      - compatibility.json
+      - packages/dsh/**
+      - packages/cli/**
+      - scripts/qa-clean-install.sh
+      - scripts/qa-pack-install.sh
+      - .github/workflows/dsh-release-compat.yml
   push:
     branches:
       - main

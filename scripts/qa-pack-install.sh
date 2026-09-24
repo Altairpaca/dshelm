@@ -108,18 +108,22 @@ DSH_VERSION="$(node -e "const c=require('$ROOT/compatibility.json'); if(typeof c
 mkdir -p "$DSH_CLI_DIR"
 stage "install external DSH compatibility target ($DSH_VERSION)"
 # The published DSH CLI has a large, partly native dependency graph. Keep it
-# isolated from the package-closure gate and explicitly review every package
-# allowed to execute an install script. Version matchers intentionally make
-# upstream semver drift fail closed instead of granting future versions script
-# execution automatically.
+# isolated from the package-closure gate and reconstruct the dependency cohort
+# that was available when the exact verified DSH release was published. pnpm's
+# time-based resolver keeps direct dependencies at their requested minimum and
+# only selects subdependencies published before the last direct dependency,
+# preventing a historical DSH release from silently absorbing newer prerelease
+# siblings or native transitive updates. Lifecycle scripts remain fail-closed
+# through exact allowBuilds entries.
 printf '{"private":true}\n' > "$DSH_CLI_DIR/package.json"
 cat > "$DSH_CLI_DIR/pnpm-workspace.yaml" <<'YAML'
+resolutionMode: time-based
 allowBuilds:
-  '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.8': true
+  '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.7': true
   '@google/genai@1.52.0': true
-  'koffi@3.2.1': true
+  'koffi@3.1.5': true
   'node-pty@1.2.0-beta.15': true
-  'protobufjs@7.6.6': true
+  'protobufjs@7.6.5': true
 YAML
 pnpm --dir "$DSH_CLI_DIR" add --save-exact --prefer-offline "@deepseek-ai/dsh@$DSH_VERSION"
 test -x "$DSH_CLI_DIR/node_modules/.bin/dsh"
